@@ -90,8 +90,33 @@ m_col1, m_col2, m_col3 = str_dynamic.columns(3)
 texto_modo = "SISTEMA INTEGRAL: {}".format(estado_actual_remoto)
 m_col1.metric("ESTADO ACTUAL EN NUBE", texto_modo)
 
-m_col2.metric("MECHAZOS BLOQUEADOS (FILTRO 3S)", "4 Falsas Rupturas")
-m_col3.metric("CAPITAL SALVAGUARDADO", "$38.40 USDT")
+# LECTURA ASÍNCRONA DE LÓGICA DE MITIGACIÓN REAL EN SUPABASE
+url_mechazos_app = ""
+if URL_TABLA_CONTROL:
+    url_mechazos_app = URL_TABLA_CONTROL.replace("control_bot", "registro_mechazos")
+
+def obtener_actividad_mechazos():
+    if not url_mechazos_app: return []
+    headers = obtener_headers_seguros()
+    try:
+        respuesta = requests.get(url_mechazos_app, headers=headers, timeout=6, verify=False)
+        if respuesta.status_code == 200: return respuesta.json()
+    except Exception: pass
+    return []
+
+datos_mechazos_reales = obtener_actividad_mechazos()
+total_mechazos_conteo = len(datos_mechazos_reales)
+
+suma_perdida_total = 0.0
+for mechazo_item in datos_mechazos_reales:
+    suma_perdida_total = suma_perdida_total + float(mechazo_item.get("perdida_evitada", 0.0))
+
+texto_conteo = "{} Falsas Rupturas".format(total_mechazos_conteo)
+texto_ahorro = "${} USDT".format(round(suma_perdida_total, 2))
+
+m_col2.metric("MECHAZOS BLOQUEADOS (FILTRO 3S)", texto_conteo)
+m_col3.metric("CAPITAL SALVAGUARDADO", texto_ahorro)
+
 
 str_dynamic.markdown("---")
 
