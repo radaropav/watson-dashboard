@@ -5,7 +5,7 @@ import requests
 # CONFIGURACIÓN PREMIUM DE LA INTERFAZ ESTILO TERMINAL DE TRADING CUÁNTICO
 str_dynamic.set_page_config(
     page_title="Mesa Algorítmica Watson",
-    page_icon="📡",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -14,8 +14,8 @@ str_dynamic.set_page_config(
 estilo_css = " <style>  body, .stApp { background-color: #080a0f; background-image: radial-gradient(circle at center, #0c1017 0%, #05070a 100%); color: #d1d4dc; font-family: 'Courier New', Courier, monospace; }  h1 { color: #ffcc00 !important; text-shadow: 0 0 5px #ffcc00, 0 0 15px #ff9900, 0 0 25px #ffaa00; font-weight: bold; }  h4 { color: #00ff88 !important; font-weight: bold; margin-top: 20px; letter-spacing: 1px; }  button, .stButton>button { background-color: #0b0e14 !important; color: #00ff88 !important; border: 1px solid #1a2333 !important; font-weight: bold; width: 100%; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }  button:hover { background-color: #00ff88 !important; color: #05070a !important; box-shadow: 0 0 12px #00ff88; border: 1px solid #00ff88 !important; }  .stApp [data-testid='stMetric'] { background-color: #05070a !important; border: 1px solid #141b26 !important; padding: 15px !important; border-radius: 4px !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 6px rgba(0,0,0,0.5); }  </style> "
 str_dynamic.markdown(estilo_css, unsafe_allow_html=True)
 
-# ENCABEZADO DE RADAR ALGORÍTMICO EN ESPAÑOL
-str_dynamic.markdown("# [Ξ] 📡 CONSOLA OPERATIVA WATSON ELITE")
+# ENCABEZADO CON EL RAYO OPERATIVO
+str_dynamic.markdown("# ⚡ WATSON ELITE TRADE")
 str_dynamic.markdown("### • TERMINAL TÁCTICA DE ALTA FRECUENCIA •")
 str_dynamic.markdown("---")
 
@@ -40,7 +40,7 @@ def obtener_ultimo_estado():
         if respuesta.status_code == 200:
             datos = respuesta.json()
             if datos and len(datos) > 0:
-                primer_registro = datos[0]
+                primer_registro = datos
                 return str(primer_registro.get("estado", "PREDADOR"))
     except Exception:
         pass
@@ -53,7 +53,7 @@ def enviar_nuevo_comando(nuevo_estado):
     headers.update(dict([("Prefer", "return=minimal")]))
     payload = dict(estado=str(nuevo_estado))
     try:
-        respuesta = requests.post(url_base[0], json=payload, headers=headers, timeout=6, verify=False)
+        respuesta = requests.post(url_base, json=payload, headers=headers, timeout=6, verify=False)
         return respuesta.status_code == 201
     except Exception:
         return False
