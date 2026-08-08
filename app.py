@@ -2,25 +2,24 @@ import os
 import streamlit as str_dynamic
 import requests
 
-# CONFIGURACIÓN PREMIUM DE LA INTERFAZ ESTILO TERMINAL TRADING QUANT
+# CONFIGURACIÓN PREMIUM DE LA INTERFAZ ESTILO TERMINAL DE TRADING CUÁNTICO
 str_dynamic.set_page_config(
-    page_title="Quantum Algorithmic Desk",
+    page_title="Mesa Algorítmica Watson",
     page_icon="📡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # INYECCIÓN DE FONDO MATE CARBONO Y TARJETAS DE ALTO CONTRASTE (SIN LLAVES NATIVAS)
-# El gradiente radial simula una pantalla de monitor pro con esquinas atenuadas
 estilo_css = " <style>  body, .stApp { background-color: #080a0f; background-image: radial-gradient(circle at center, #0c1017 0%, #05070a 100%); color: #d1d4dc; font-family: 'Courier New', Courier, monospace; }  h1 { color: #ffcc00 !important; text-shadow: 0 0 5px #ffcc00, 0 0 15px #ff9900, 0 0 25px #ffaa00; font-weight: bold; }  h4 { color: #00ff88 !important; font-weight: bold; margin-top: 20px; letter-spacing: 1px; }  button, .stButton>button { background-color: #0b0e14 !important; color: #00ff88 !important; border: 1px solid #1a2333 !important; font-weight: bold; width: 100%; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }  button:hover { background-color: #00ff88 !important; color: #05070a !important; box-shadow: 0 0 12px #00ff88; border: 1px solid #00ff88 !important; }  .stApp [data-testid='stMetric'] { background-color: #05070a !important; border: 1px solid #141b26 !important; padding: 15px !important; border-radius: 4px !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 6px rgba(0,0,0,0.5); }  </style> "
 str_dynamic.markdown(estilo_css, unsafe_allow_html=True)
 
-# ENCABEZADO RADAR CUÁNTICO INSTITUCIONAL
-str_dynamic.markdown("# [Ξ] 📡 WATSON ELITE TRADE")
-str_dynamic.markdown("### • HIGH-FREQUENCY TACTICAL TERMINAL •")
+# ENCABEZADO DE RADAR ALGORÍTMICO EN ESPAÑOL
+str_dynamic.markdown("# [Ξ] 📡 CONSOLA OPERATIVA WATSON ELITE")
+str_dynamic.markdown("### • TERMINAL TÁCTICA DE ALTA FRECUENCIA •")
 str_dynamic.markdown("---")
 
-# EXTRACCIÓN SEGURA DE CREDENCIALES
+# EXTRACCIÓN SEGURA DE CREDENCIALES DESDE EL ENTORNO DE DESPLIEGUE
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 URL_TABLA_CONTROL = os.getenv("URL_SUPABASE_TABLA")
 
@@ -41,7 +40,7 @@ def obtener_ultimo_estado():
         if respuesta.status_code == 200:
             datos = respuesta.json()
             if datos and len(datos) > 0:
-                primer_registro = datos
+                primer_registro = datos[0]
                 return str(primer_registro.get("estado", "PREDADOR"))
     except Exception:
         pass
@@ -54,8 +53,8 @@ def enviar_nuevo_comando(nuevo_estado):
     headers.update(dict([("Prefer", "return=minimal")]))
     payload = dict(estado=str(nuevo_estado))
     try:
-        respuesta = requests.post(url_base, json=payload, headers=headers, timeout=6, verify=False)
-        return respuesta.status_code in
+        respuesta = requests.post(url_base[0], json=payload, headers=headers, timeout=6, verify=False)
+        return respuesta.status_code == 201
     except Exception:
         return False
 
@@ -88,19 +87,18 @@ str_dynamic.markdown("---")
 str_dynamic.markdown("#### 💎 MONITOREO DE ACTIVIDAD & MITIGACIÓN DE RIESGO")
 m_col1, m_col2, m_col3 = str_dynamic.columns(3)
 
-texto_modo = "ALGO CORE: {}".format(estado_actual_remoto)
+texto_modo = "SISTEMA INTEGRAL: {}".format(estado_actual_remoto)
 m_col1.metric("ESTADO ACTUAL EN NUBE", texto_modo)
 
-# Monitoreo de mitigación de riesgo basado en tu filtro de 3 segundos
 m_col2.metric("MECHAZOS BLOQUEADOS (FILTRO 3S)", "4 Falsas Rupturas")
 m_col3.metric("CAPITAL SALVAGUARDADO", "$38.40 USDT")
 
 str_dynamic.markdown("---")
 
 # ==================================================================
-# SECCIÓN 3: PNL ANALYTICS (CURVA DE RENDIMIENTO CUANTITATIVO)
+# SECCIÓN 3: RENDIMIENTO HISTÓRICO EN GRÁFICA
 # ==================================================================
-str_dynamic.markdown("#### 📈 RENDIMIENTO CUANTITATIVO ACUMULADO (PNL)")
+str_dynamic.markdown("#### 📈 RENDIMIENTO CUANTITATIVO ACUMULADO (GANANCIAS)")
 
 url_historial = ""
 if URL_TABLA_CONTROL:
@@ -117,11 +115,10 @@ def obtener_historial_trades():
 
 lista_trades = obtener_historial_trades()
 
-# Curva de contingencia inteligente si no hay operaciones reales
 if not lista_trades:
     str_dynamic.caption("💡 MODO PRE-EVALUACIÓN DE MERCADO: Mostrando curva de proyección estimada hasta la primera orden de Binance.")
     datos_grafico_simulados = [0.0, 4.5, 12.2, 9.8, 18.5, 25.4, 32.1]
-    str_dynamic.line_chart(datos_grafico_simulados, y_label="PNL Neto (USDT)")
+    str_dynamic.line_chart(datos_grafico_simulados, y_label="Ganancia Neta (USDT)")
 else:
     lista_precios_real = []
     for trade in lista_trades:
@@ -131,20 +128,19 @@ else:
 str_dynamic.markdown("---")
 
 # ==================================================================
-# SECCIÓN 4: AUDIT LOG (REGISTRO DE OPERACIONES EN RAW DATA)
+# SECCIÓN 4: REGISTRO DE ÓRDENES EN RAW DATA
 # ==================================================================
-str_dynamic.markdown("#### 📑 REGISTRO DE ÓRDENES EN TIEMPO REAL (SUPABASE STREAM)")
+str_dynamic.markdown("#### 📑 REGISTRO DE ÓRDENES EN TIEMPO REAL (FLUJO SUPABASE)")
 
 if lista_trades:
     str_dynamic.dataframe(lista_trades, use_container_width=True)
 else:
-    # Registros con formato tipo terminal financiera
     datos_tabla_simulada = [
-        dict(id=1, created_at="2026-08-08 09:15", direccion="LONG", precio=3150.25),
-        dict(id=2, created_at="2026-08-08 11:32", direccion="SHORT", precio=3195.40),
-        dict(id=3, created_at="2026-08-08 14:10", direccion="LONG", precio=3170.10)
+        dict(id=1, registro_fecha="2026-08-08 09:15", direccion="LONG", precio=3150.25),
+        dict(id=2, registro_fecha="2026-08-08 11:32", direccion="SHORT", precio=3195.40),
+        dict(id=3, registro_fecha="2026-08-08 14:10", direccion="LONG", precio=3170.10)
     ]
     str_dynamic.dataframe(datos_tabla_simulada, use_container_width=True)
 
 str_dynamic.markdown("---")
-str_dynamic.caption("Watson Elite Trade Terminal v3.1 • Quantum Tactical Engine • Protegido de extremo a extremo")
+str_dynamic.caption("Terminal Operativa Watson Elite v3.2 • Núcleo de Ejecución Táctica • Protegido de Extremo a Extremo")
