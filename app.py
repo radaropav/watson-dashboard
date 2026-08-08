@@ -6,7 +6,7 @@ import requests
 str_dynamic.set_page_config(
     page_title="Watson Elite",
     page_icon="🤖",
-    layout="uncollapsed",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
