@@ -11,7 +11,7 @@ str_dynamic.set_page_config(
 )
 
 # ESTILOS OSCUROS DE ALTA DENSIDAD INYECTADOS SIN LLAVES NATIVAS
-estilo_css = " <style>  body, .stApp { background-color: #0b0e14; color: #d1d4dc; font-family: 'Courier New', Courier, monospace; }  button, .stButton>button { background-color: #1f2229 !important; color: #00ff88 !important; border: 1px solid #2f323a !important; font-weight: bold; width: 100%; border-radius: 4px; }  button:hover { background-color: #00ff88 !important; color: #0b0e14 !important; }  .stMetric { background-color: #12161f; border: 1px solid #1f2229; padding: 15px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }  .stDataFrame { border: 1px solid #1f2229; }  </style> "
+estilo_css = " <style>  body, .stApp { background-color: #0b0e14; color: #d1d4dc; font-family: 'Courier New', Courier, monospace; }  h1 { color: #ffcc00 !important; text-shadow: 0 0 5px #ffcc00, 0 0 15px #ff9900, 0 0 25px #ffaa00; font-weight: bold; }  button, .stButton>button { background-color: #1f2229 !important; color: #00ff88 !important; border: 1px solid #2f323a !important; font-weight: bold; width: 100%; border-radius: 4px; }  button:hover { background-color: #00ff88 !important; color: #0b0e14 !important; }  .stApp [data-testid='stMetric'] { background-color: #12161f !important; border: 1px solid #1f2229 !important; padding: 15px !important; border-radius: 4px !important; }  </style> "
 str_dynamic.markdown(estilo_css, unsafe_allow_html=True)
 
 # ENCABEZADO INSTITUCIONAL SOLICITADO
