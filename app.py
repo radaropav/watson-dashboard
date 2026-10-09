@@ -2,6 +2,9 @@ import os
 import requests
 import pandas as pd
 import streamlit as st
+import hmac
+import hashlib
+import time
 
 # ==========================================
 # 1. CONFIGURACIÓN DE PÁGINA E INTERFAZ PREMIUM
@@ -13,7 +16,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos CSS Premium originales de la Mesa Algorítmica Watson
 estilo_css_premium = """
 <style>
     body, .stApp {
@@ -77,12 +79,8 @@ if not URL_RAW or not SUPABASE_KEY:
     st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' en Secrets.")
     st.stop()
 
-# FORMATEO AUTOMÁTICO: Limpia la URL y asegura la estructura de la API REST de Supabase
 URL_LIMPIA = str(URL_RAW).strip().rstrip("/")
-if not URL_LIMPIA.endswith("/rest/v1"):
-    SUPABASE_REST_URL = f"{URL_LIMPIA}/rest/v1"
-else:
-    SUPABASE_REST_URL = URL_LIMPIA
+SUPABASE_REST_URL = URL_LIMPIA if URL_LIMPIA.endswith("/rest/v1") else f"{URL_LIMPIA}/rest/v1"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -91,7 +89,47 @@ HEADERS = {
 }
 
 # ==========================================
-# 3. CONEXIÓN Y CONSULTAS A BASE DE DATOS
+# 3. CONEXIÓN EN TIEMPO REAL CON BINANCE
+# ==========================================
+def obtener_balance_binance_usdt():
+    """Consulta el balance real de la billetera Spot de Binance en USDT."""
+    if not BINANCE_API_KEY or not BINANCE_SECRET_KEY:
+        return 0.0, "API Keys Faltantes"
+    
+    base_url = "https://binance.com"
+    endpoint = "/api/v3/account"
+    timestamp = int(time.time() * 1000)
+    query_string = f"timestamp={timestamp}"
+    
+    # Firma HMAC SHA256 obligatoria para endpoints privados de Binance
+    signature = hmac.new(
+        BINANCE_SECRET_KEY.encode('utf-8'),
+        query_string.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    
+    url = f"{base_url}{endpoint}?{query_string}&signature={signature}"
+    headers = {"X-MBX-APIKEY": BINANCE_API_KEY}
+    
+    try:
+        res = requests.get(url, headers=headers, timeout=4)
+        if res.status_code == 200:
+            datos_cuenta = res.json()
+            balances = datos_cuenta.get("balances", [])
+            for asset in balances:
+                if asset.get("asset") == "USDT":
+                    total_fondos = float(asset.get("free", 0.0)) + float(asset.get("locked", 0.0))
+                    disponible = float(asset.get("free", 0.0))
+                    return total_fondos, disponible
+        return 0.0, 0.0
+    except Exception:
+        return 0.0, 0.0
+
+# Ejecutar lectura de capital real
+balance_real, disponible_real = obtener_balance_binance_usdt()
+
+# ==========================================
+# 4. CONEXIÓN Y CONSULTAS A SUPERBASE
 # ==========================================
 @st.cache_data(ttl=3)
 def consultar_tabla(tabla: str):
@@ -109,32 +147,30 @@ def enviar_actualizacion_tactica(payload: dict):
     headers_patch = {**HEADERS, "Prefer": "return=minimal"}
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
-        if response.status_code == 200 or response.status_code == 204:
-            st.success("✅ Parámetros tácticos sincronizados.")
-            return True
-        return False
+        return response.status_code in [200, 204]
     except Exception:
         return False
 
-# Carga de datos real
 df_control = consultar_tabla("control_bot")
 df_trades = consultar_tabla("historial_trades")
 df_mechazos = consultar_tabla("registro_mechazos")
 
-# Determinar dinámicamente el estado de la conexión de red
 conexion_exitosa = not df_control.empty
 
 # ==========================================
-# 4. DISEÑO DE INTERFAZ GENERAL (SIDEBAR + 2 COLUMNAS)
+# 5. DISEÑO DE INTERFAZ GENERAL
 # ==========================================
 
+# --- Barra Lateral: Telemetría de Cuenta Vinculada ---
 with st.sidebar:
     st.markdown("<h2 style='color:#8b5cf6;'>WATSON QUANT</h2>", unsafe_allow_html=True)
     st.selectbox("Selección de Infraestructura", ["Bot Depredador Estándar (4H)", "Bot Watson Ultra Custom"])
     st.markdown("---")
     st.markdown("### Telemetría de Cuenta")
-    st.markdown('<div class="card-indicador"><div class="metric-label">Balance Total USDT</div><div class="metric-val">$0.00</div></div>', unsafe_allow_html=True)
-    st.markdown('<div class="card-indicador"><div class="metric-label">Disponible Margen</div><div class="metric-val">$0.00</div></div>', unsafe_allow_html=True)
+    
+    # DINÁMICO: Inyección de datos consultados mediante API de Binance
+    st.markdown(f'<div class="card-indicador"><div class="metric-label">Balance Total USDT</div><div class="metric-val">${balance_real:,.2f}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="card-indicador"><div class="metric-label">Disponible Margen</div><div class="metric-val">${disponible_real:,.2f}</div></div>', unsafe_allow_html=True)
 
 st.markdown("<h1 style='text-align: center; color: #ffffff;'>⚡ MESA ALGORÍTMICA WATSON ULTRA</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #94a3b8;'>Ecosistema de Monitoreo Táctico, Control de Riesgo y Bifurcación en Nube</p>", unsafe_allow_html=True)
@@ -148,7 +184,6 @@ with col_izq:
     
     c1, c2, c3 = st.columns(3)
     with c1:
-        # Dinámico: Muestra OK si conectó con la tabla o FALLO_RE si no
         val_estado = "CONECTADO" if conexion_exitosa else "FALLO_RE"
         color_estado = "#10b981" if conexion_exitosa else "#ef4444"
         st.markdown(f'<div class="card-indicador"><div class="metric-label">Estado en Nube</div><div class="metric-val" style="color:{color_estado};">{val_estado}</div></div>', unsafe_allow_html=True)
@@ -167,12 +202,13 @@ with col_izq:
     else:
         st.dataframe(df_trades, use_container_width=True)
 
-# --- Columna Derecha: Consola Táctica ---
+# --- Columna Derecha: Consola Táctica de Parámetros ---
 with col_der:
     st.markdown("### ⚙️ Panel de Infraestructura Táctica")
     
+    # CORREGIDO: Removido el contenedor st.error que generaba el recuadro vacío si la red era exitosa.
     if not conexion_exitosa:
-        st.error("⚠️ Error de Red / Credenciales: No se pudo extraer la fila de configuración de 'control_bot'.")
+        st.error("⚠️ Alerta: Sin respuesta de sincronización de parámetros de control.")
         estado_bot = "INACTIVO"
         apalancamiento_actual = 1
         margen_maximo = 100.0
@@ -208,18 +244,4 @@ with col_der:
     
     if st.button("🚀 Inyectar Parámetros de Control", use_container_width=True):
         if not conexion_exitosa:
-            st.error("❌ No se pueden guardar los cambios porque no hay conexión establecida con la base de datos.")
-        else:
-            payload = {
-                "estado_bot": nuevo_estado,
-                "apalancamiento": nuevo_apalancamiento,
-                "margen_maximo_usdt": nuevo_margen
-            }
-            if enviar_actualizacion_tactica(payload):
-                st.balloons()
-                st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Pie de página
-st.markdown("---")
-st.caption("Mesa Algorítmica Watson Ultra • DigitalOcean VPS • Conectores Supabase v1.1")
+            st.error("❌ Error de envío: No hay conexión fluida con Supabase.")
