@@ -88,7 +88,6 @@ def obtener_balance_futuros_real():
     query_string = f"timestamp={timestamp}&recvWindow=10000"
     firma = generar_firma_binance(query_string)
     
-    # Segmentación limpia de cabeceras y endpoints sin URLs duras
     url_segmentada = [os.environ.get("BINANCE_ENDPOINT_BASE", "https://binance.com"), "/fapi/v2/account"]
     endpoint_final = "".join(url_segmentada)
     
@@ -121,7 +120,7 @@ def consultar_configuracion_instancia(instancia_id):
         return {"estado": "MODO_LOCAL", "apalancamiento": 10, "porcentaje_capital": 35}
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')[0]}/rest/v1/control_bot?id=eq.{instancia_id}"
+    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')}/rest/v1/control_bot?id=eq.{instancia_id}"
     
     try:
         respuesta = requests.get(endpoint, headers=headers, timeout=6)
@@ -136,11 +135,11 @@ def actualizar_parametro_supabase(instancia_id, payload):
         return False
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')[0]}/rest/v1/control_bot?id=eq.{instancia_id}"
+    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')}/rest/v1/control_bot?id=eq.{instancia_id}"
     
     try:
         respuesta = requests.patch(endpoint, headers=headers, json=payload, timeout=6)
-        return respuesta.status_code in [200, 204]
+        return respuesta.status_code in [200, 201, 24]
     except Exception:
         return False
 
@@ -149,7 +148,7 @@ def consultar_metricas_tabla(nombre_tabla):
         return []
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')[0]}/rest/v1/{nombre_tabla}?select=*"
+    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')}/rest/v1/{nombre_tabla}?select=*"
     
     try:
         respuesta = requests.get(endpoint, headers=headers, timeout=6)
@@ -159,7 +158,6 @@ def consultar_metricas_tabla(nombre_tabla):
         pass
     return []
 
-# --- MAQUETA VISUAL DESDE EL ORIGEN ---
 str_dynamic.sidebar.markdown("<h2 style='color:#8b5cf6; text-align:center;'>WATSON QUANT</h2>", unsafe_allow_html=True)
 str_dynamic.sidebar.markdown("---")
 
@@ -191,7 +189,7 @@ str_dynamic.markdown(f"<h1 style='margin-bottom:0;'>Mesa Algorítmica Watson Eli
 str_dynamic.markdown(f"<p style='color:#94a3b8; font-size:14px; letter-spacing:1px;'>NÚCLEO MAESTRO ACTIVO: {instancia_seleccionada.upper()}</p>", unsafe_allow_html=True)
 str_dynamic.markdown("---")
 
-col_izq, col_der = str_dynamic.columns([2, 1])
+col_izq, col_der = str_dynamic.columns(2)
 
 with col_izq:
     str_dynamic.markdown("### Rendimiento Cuantitativo Acumulado")
@@ -256,3 +254,4 @@ with col_izq:
         """, unsafe_allow_html=True)
 
 with col_der:
+    str_dynamic.markdown("### Consola de Infraestructura Táctica")
