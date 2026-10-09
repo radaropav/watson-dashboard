@@ -118,7 +118,6 @@ def consulting_master_row(instancia_id):
         return {"estado": "MODO_LOCAL", "apalancamiento": 10, "porcentaje_capital": 35}
     
     headers = obtener_headers_supabase()
-    # Construcción directa limpia usando la variable cruda del .env sin cortes
     endpoint = f"{URL_BASE_SUPABASE}?id=eq.{instancia_id}"
     
     try:
@@ -147,8 +146,7 @@ def consultar_metricas_tabla(nombre_tabla):
         return []
     
     headers = obtener_headers_supabase()
-    # Reemplazo seguro de segmento final para brincar entre tablas
-    base_endpoint = URL_BASE_SUPABASE.split("?")[0] if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
+    base_endpoint = URL_BASE_SUPABASE.split("?") if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
     endpoint = base_endpoint.replace("control_bot", nombre_tabla)
     
     try:
@@ -256,3 +254,5 @@ with col_izq:
         """, unsafe_allow_html=True)
 
 with col_der:
+    str_dynamic.markdown("### Consola de Infraestructura Táctica")
+    str_dynamic.markdown("<p class='metric-label'>Canasta del Módulo</p>", unsafe_allow_html=True)
