@@ -184,7 +184,7 @@ str_dynamic.sidebar.markdown(f"""
 
 config_remota = consulting_master_row(id_instancia_actual)
 
-str_dynamic.markdown(f"<h1 style='margin-bottom:0;'>Mesa Algorítmica Watson Elite</h1>", unsafe_allow_html=True)
+str_dynamic.markdown("<h1 style='margin-bottom:0;'>Mesa Algorítmica Watson Elite</h1>", unsafe_allow_html=True)
 str_dynamic.markdown(f"<p style='color:#94a3b8; font-size:14px; letter-spacing:1px;'>NÚCLEO MAESTRO ACTIVO: {instancia_seleccionada.upper()}</p>", unsafe_allow_html=True)
 str_dynamic.markdown("---")
 
@@ -222,7 +222,7 @@ with col_izq:
         )
         str_dynamic.plotly_chart(fig_equity, use_container_width=True)
 
-    str_dynamic.markdown("<br>### Monitoreo de Actividad and Mitigación", unsafe_allow_html=True)
+    str_dynamic.markdown("<br>### Monitoreo de Actividad y Mitigación", unsafe_allow_html=True)
     c1, c2, c3 = str_dynamic.columns(3)
     
     with c1:
