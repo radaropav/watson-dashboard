@@ -1,171 +1,258 @@
 import os
-import streamlit as str_dynamic
 import requests
+import hmac
+import hashlib
+import time
+import streamlit as str_dynamic
+import plotly.graph_objects as go
+from dotenv import load_dotenv
 
-# CONFIGURACIÓN PREMIUM DE LA INTERFAZ ESTILO TERMINAL DE TRADING CUÁNTICO
+load_dotenv()
+
 str_dynamic.set_page_config(
-    page_title="Mesa Algorítmica Watson",
+    page_title="Mesa Algorítmica Watson Ultra",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# INYECCIÓN DE FONDO MATE CARBONO Y TARJETAS DE ALTO CONTRASTE (SIN LLAVES NATIVAS)
-estilo_css = " <style>  body, .stApp { background-color: #080a0f; background-image: radial-gradient(circle at center, #0c1017 0%, #05070a 100%); color: #d1d4dc; font-family: 'Courier New', Courier, monospace; }  h1 { color: #ffcc00 !important; text-shadow: 0 0 5px #ffcc00, 0 0 15px #ff9900, 0 0 25px #ffaa00; font-weight: bold; }  h4 { color: #00ff88 !important; font-weight: bold; margin-top: 20px; letter-spacing: 1px; }  button, .stButton>button { background-color: #0b0e14 !important; color: #00ff88 !important; border: 1px solid #1a2333 !important; font-weight: bold; width: 100%; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }  button:hover { background-color: #00ff88 !important; color: #05070a !important; box-shadow: 0 0 12px #00ff88; border: 1px solid #00ff88 !important; }  .stApp [data-testid='stMetric'] { background-color: #05070a !important; border: 1px solid #141b26 !important; padding: 15px !important; border-radius: 4px !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 6px rgba(0,0,0,0.5); }  </style> "
-str_dynamic.markdown(estilo_css, unsafe_allow_html=True)
+estilo_css_premium = """
+<style>
+    body, .stApp {
+        background-color: #0b0d17 !important;
+        background-image: radial-gradient(circle at 50% 50%, #151932 0%, #070913 100%) !important;
+        color: #e2e8f0 !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #0d1124 !important;
+        border-right: 1px solid #1f294d !important;
+    }
+    .card-indicador {
+        background: rgba(20, 26, 54, 0.6) !important;
+        border: 1px solid #242f63 !important;
+        backdrop-filter: blur(12px) !important;
+        border-radius: 16px !important;
+        padding: 24px !important;
+        margin-bottom: 16px !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+    }
+    .metric-val {
+        font-size: 32px !important;
+        font-weight: 700 !important;
+        color: #8b5cf6 !important;
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+    .metric-label {
+        font-size: 13px !important;
+        color: #94a3b8 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+    }
+    div.stButton > button {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 12px 24px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+    }
+    div.stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 0 20px rgba(124, 58, 237, 0.6) !important;
+    }
+    .stSelectbox [data-baseweb="select"] {
+        background-color: #141a36 !important;
+        border: 1px solid #242f63 !important;
+        color: white !important;
+    }
+</style>
+"""
+str_dynamic.markdown(estilo_css_premium, unsafe_allow_html=True)
 
-# ENCABEZADO CON EL RAYO OPERATIVO
-str_dynamic.markdown("# ⚡ WATSON ELITE TRADE")
-str_dynamic.markdown("### • TERMINAL TÁCTICA DE ALTA FRECUENCIA •")
-str_dynamic.markdown("---")
+API_KEY_BINANCE = os.environ.get("BINANCE_API_KEY")
+SECRET_KEY_BINANCE = os.environ.get("BINANCE_SECRET_KEY")
+URL_BASE_SUPABASE = os.environ.get("URL_SUPABASE_TABLA")
+KEY_MAESTRA_SUPABASE = os.environ.get("SUPABASE_KEY")
 
-# EXTRACCIÓN SEGURA DE CREDENCIALES DESDE EL ENTORNO DE DESPLIEGUE
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-URL_TABLA_CONTROL = os.getenv("URL_SUPABASE_TABLA")
+def generar_firma_binance(query_string):
+    return hmac.new(SECRET_KEY_BINANCE.encode('utf-8'), query_string.encode('utf-8'), hashlib.sha256).hexdigest()
 
-def obtener_headers_seguros():
-    token = "Bearer " + str(SUPABASE_KEY)
-    retorno = dict([
-        ("apikey", str(SUPABASE_KEY)),
-        ("Authorization", token),
-        ("Content-Type", "application/json")
-    ])
-    return retorno
-
-def obtener_ultimo_estado():
-    if not URL_TABLA_CONTROL: return "DESCONECTADO"
-    headers = obtener_headers_seguros()
+def obtener_balance_futuros_real():
+    if not API_KEY_BINANCE or not SECRET_KEY_BINANCE:
+        return {"total": 0.0, "disponible": 0.0, "mantenimiento": 0.0}
+    
+    timestamp = int(time.time() * 1000)
+    query_string = f"timestamp={timestamp}&recvWindow=10000"
+    firma = generar_firma_binance(query_string)
+    
+    # Segmentación limpia de cabeceras y endpoints sin URLs duras
+    url_segmentada = [os.environ.get("BINANCE_ENDPOINT_BASE", "https://binance.com"), "/fapi/v2/account"]
+    endpoint_final = "".join(url_segmentada)
+    
+    headers = {"X-MBX-APIKEY": API_KEY_BINANCE}
+    params = {"timestamp": timestamp, "recvWindow": 10000, "signature": firma}
+    
     try:
-        respuesta = requests.get(URL_TABLA_CONTROL, headers=headers, timeout=6, verify=False)
+        respuesta = requests.get(endpoint_final, headers=headers, params=params, timeout=8)
         if respuesta.status_code == 200:
             datos = respuesta.json()
-            if datos and len(datos) > 0:
-                primer_registro = datos
-                return str(primer_registro.get("estado", "PREDADOR"))
+            return {
+                "total": float(datos.get("totalWalletBalance", 0.0)),
+                "disponible": float(datos.get("maxWithdrawAmount", 0.0)),
+                "mantenimiento": float(datos.get("totalMaintMargin", 0.0))
+            }
     except Exception:
         pass
-    return "DESCONECTADO"
+    return {"total": 0.0, "disponible": 0.0, "mantenimiento": 0.0}
 
-def enviar_nuevo_comando(nuevo_estado):
-    if not URL_TABLA_CONTROL: return False
-    url_base = URL_TABLA_CONTROL.split("?")
-    headers = obtener_headers_seguros()
-    headers.update(dict([("Prefer", "return=minimal")]))
-    payload = dict(estado=str(nuevo_estado))
+def obtener_headers_supabase():
+    return {
+        "apikey": KEY_MAESTRA_SUPABASE,
+        "Authorization": f"Bearer {KEY_MAESTRA_SUPABASE}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+
+def consultar_configuracion_instancia(instancia_id):
+    if not URL_BASE_SUPABASE or not KEY_MAESTRA_SUPABASE:
+        return {"estado": "MODO_LOCAL", "apalancamiento": 10, "porcentaje_capital": 35}
+    
+    headers = obtener_headers_supabase()
+    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')[0]}/rest/v1/control_bot?id=eq.{instancia_id}"
+    
     try:
-        respuesta = requests.post(url_base, json=payload, headers=headers, timeout=6, verify=False)
-        return respuesta.status_code == 201
+        respuesta = requests.get(endpoint, headers=headers, timeout=6)
+        if respuesta.status_code == 200 and len(respuesta.json()) > 0:
+            return respuesta.json()[0]
+    except Exception:
+        pass
+    return {"estado": "FALLO_RED", "apalancamiento": 10, "porcentaje_capital": 35}
+
+def actualizar_parametro_supabase(instancia_id, payload):
+    if not URL_BASE_SUPABASE or not KEY_MAESTRA_SUPABASE:
+        return False
+    
+    headers = obtener_headers_supabase()
+    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')[0]}/rest/v1/control_bot?id=eq.{instancia_id}"
+    
+    try:
+        respuesta = requests.patch(endpoint, headers=headers, json=payload, timeout=6)
+        return respuesta.status_code in [200, 204]
     except Exception:
         return False
 
-# LECTURA RECURRENTE DE TELEMETRÍA EN TIEMPO REAL
-estado_actual_remoto = obtener_ultimo_estado()
-
-# ==================================================================
-# SECCIÓN 1: PANEL DE COMANDOS TÁCTICOS (ESTILO TERMINAL MT5 PRO)
-# ==================================================================
-str_dynamic.markdown("#### 🎛️ ACCIONES DE INFRAESTRUCTURA TÁCTICA")
-col1, col2, col3 = str_dynamic.columns(3)
-
-with col1:
-    if col1.button("🔥 EJECUTAR PREDADOR"):
-        if enviar_nuevo_comando("PREDADOR"): estado_actual_remoto = "PREDADOR"
-
-with col2:
-    if col2.button("📊 INICIAR APLANAMIENTO"):
-        if enviar_nuevo_comando("APLANAMIENTO"): estado_actual_remoto = "APLANAMIENTO"
-
-with col3:
-    if col3.button("🛑 FORZAR SEGURIDAD OFF"):
-        if enviar_nuevo_comando("OFF"): estado_actual_remoto = "OFF"
-
-str_dynamic.markdown("---")
-
-# ==================================================================
-# SECCIÓN 2: TELEMETRÍA ALTA DENSIDAD & CONTROL DE MITIGACIÓN
-# ==================================================================
-str_dynamic.markdown("#### 💎 MONITOREO DE ACTIVIDAD & MITIGACIÓN DE RIESGO")
-m_col1, m_col2, m_col3 = str_dynamic.columns(3)
-
-texto_modo = "SISTEMA INTEGRAL: {}".format(estado_actual_remoto)
-m_col1.metric("ESTADO ACTUAL EN NUBE", texto_modo)
-
-# LECTURA ASÍNCRONA DE LÓGICA DE MITIGACIÓN REAL EN SUPABASE
-url_mechazos_app = ""
-if URL_TABLA_CONTROL:
-    url_mechazos_app = URL_TABLA_CONTROL.replace("control_bot", "registro_mechazos")
-
-def obtener_actividad_mechazos():
-    if not url_mechazos_app: return []
-    headers = obtener_headers_seguros()
+def consultar_metricas_tabla(nombre_tabla):
+    if not URL_BASE_SUPABASE or not KEY_MAESTRA_SUPABASE:
+        return []
+    
+    headers = obtener_headers_supabase()
+    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')[0]}/rest/v1/{nombre_tabla}?select=*"
+    
     try:
-        respuesta = requests.get(url_mechazos_app, headers=headers, timeout=6, verify=False)
-        if respuesta.status_code == 200: return respuesta.json()
-    except Exception: pass
+        respuesta = requests.get(endpoint, headers=headers, timeout=6)
+        if respuesta.status_code == 200:
+            return respuesta.json()
+    except Exception:
+        pass
     return []
 
-datos_mechazos_reales = obtener_actividad_mechazos()
-total_mechazos_conteo = len(datos_mechazos_reales)
+# --- MAQUETA VISUAL DESDE EL ORIGEN ---
+str_dynamic.sidebar.markdown("<h2 style='color:#8b5cf6; text-align:center;'>WATSON QUANT</h2>", unsafe_allow_html=True)
+str_dynamic.sidebar.markdown("---")
 
-suma_perdida_total = 0.0
-for mechazo_item in datos_mechazos_reales:
-    suma_perdida_total = suma_perdida_total + float(mechazo_item.get("perdida_evitada", 0.0))
+instancia_seleccionada = str_dynamic.sidebar.selectbox(
+    "SELECCIÓN DE INFRAESTRUCTURA",
+    ["Bot Depredador Estándar (4H)", "Bot Watson Pánico (15m)"]
+)
 
-texto_conteo = "{} Falsas Rupturas".format(total_mechazos_conteo)
-texto_ahorro = "${} USDT".format(round(suma_perdida_total, 2))
+id_instancia_actual = 1 if instancia_seleccionada == "Bot Depredador Estándar (4H)" else 2
+activos_actuales = ["BTC", "ETH", "SOL", "BNB", "XRP"] if id_instancia_actual == 1 else ["BTC", "ETH", "SOL"]
 
-m_col2.metric("MECHAZOS BLOQUEADOS (FILTRO 3S)", texto_conteo)
-m_col3.metric("CAPITAL SALVAGUARDADO", texto_ahorro)
+str_dynamic.sidebar.markdown("<br><p class='metric-label'>Telemetría de Cuenta</p>", unsafe_allow_html=True)
+balance_real = obtener_balance_futuros_real()
 
+str_dynamic.sidebar.markdown(f"""
+<div class='card-indicador'>
+    <p class='metric-label'>Balance Total USDT</p>
+    <p class='metric-val'>${balance_real['total']:.2f}</p>
+</div>
+<div class='card-indicador'>
+    <p class='metric-label'>Disponible Margen</p>
+    <p class='metric-val' style='color:#10b981;'>${balance_real['disponible']:.2f}</p>
+</div>
+""", unsafe_allow_html=True)
 
+config_remota = consultar_configuracion_instancia(id_instancia_actual)
+
+str_dynamic.markdown(f"<h1 style='margin-bottom:0;'>Mesa Algorítmica Watson Elite</h1>", unsafe_allow_html=True)
+str_dynamic.markdown(f"<p style='color:#94a3b8; font-size:14px; letter-spacing:1px;'>NÚCLEO MAESTRO ACTIVO: {instancia_seleccionada.upper()}</p>", unsafe_allow_html=True)
 str_dynamic.markdown("---")
 
-# ==================================================================
-# SECCIÓN 3: RENDIMIENTO HISTÓRICO EN GRÁFICA
-# ==================================================================
-str_dynamic.markdown("#### 📈 RENDIMIENTO CUANTITATIVO ACUMULADO (GANANCIAS)")
+col_izq, col_der = str_dynamic.columns([2, 1])
 
-url_historial = ""
-if URL_TABLA_CONTROL:
-    url_historial = URL_TABLA_CONTROL.replace("control_bot", "historial_trades")
+with col_izq:
+    str_dynamic.markdown("### Rendimiento Cuantitativo Acumulado")
+    datos_trades = consultar_metricas_tabla("historial_trades")
+    
+    if not datos_trades:
+        str_dynamic.markdown(f"""
+        <div style='background:rgba(20,24,50,0.4); border:1px dashed #242f63; padding:40px; border-radius:12px; text-align:center;'>
+            <p style='color:#64748b; font-size:15px; margin:0;'>
+                📊 Modo Pre-Evaluación de Mercado: Esperando registros reales de la tabla 'historial_trades' en Supabase para compilar la curva de ROI.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        precios_ejecutados = [float(t.get("precio", 0.0)) for t in datos_trades]
+        fig_equity = go.Figure()
+        fig_equity.add_trace(go.Scatter(
+            y=precios_ejecutados,
+            mode='lines+markers',
+            line=dict(color='#7c3aed', width=3, shape='spline'),
+            marker=dict(size=6, color='#10b981'),
+            fill='tozeroy',
+            fillcolor='rgba(124, 58, 237, 0.1)'
+        ))
+        fig_equity.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=0, r=0, t=10, b=0),
+            xaxis=dict(showgrid=False, color='#475569'),
+            yaxis=dict(showgrid=True, gridcolor='#1e293b', color='#475569')
+        )
+        str_dynamic.plotly_chart(fig_equity, use_container_width=True)
 
-def obtener_historial_trades():
-    if not url_historial: return []
-    headers = obtener_headers_seguros()
-    try:
-        respuesta = requests.get(url_historial, headers=headers, timeout=6, verify=False)
-        if respuesta.status_code == 200: return respuesta.json()
-    except Exception: pass
-    return []
+    str_dynamic.markdown("<br>### Monitoreo de Actividad & Mitigación", unsafe_allow_html=True)
+    c1, c2, c3 = str_dynamic.columns(3)
+    
+    with c1:
+        color_estado = "#10b981" if config_remota.get("estado") in ["PREDADOR", "APLANAMIENTO"] else "#ef4444"
+        str_dynamic.markdown(f"""
+        <div class='card-indicador'>
+            <p class='metric-label'>Estado en Nube</p>
+            <p class='metric-val' style='color:{color_estado};'>{config_remota.get("estado", "OFF")}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with c2:
+        datos_mechazos = consultar_metricas_tabla("registro_mechazos")
+        str_dynamic.markdown(f"""
+        <div class='card-indicador'>
+            <p class='metric-label'>Falsas Rupturas</p>
+            <p class='metric-val'>{len(datos_mechazos)} Mechazos</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with c3:
+        suma_ahorrada = sum([float(m.get("perdida_estimada_ahorrada", 0.0)) for m in datos_mechazos])
+        str_dynamic.markdown(f"""
+        <div class='card-indicador'>
+            <p class='metric-label'>Capital Salvaguardado</p>
+            <p class='metric-val' style='color:#10b981;'>${suma_ahorrada:.2f}</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-lista_trades = obtener_historial_trades()
-
-if not lista_trades:
-    str_dynamic.caption("💡 MODO PRE-EVALUACIÓN DE MERCADO: Mostrando curva de proyección estimada hasta la primera orden de Binance.")
-    datos_grafico_simulados = [0.0, 4.5, 12.2, 9.8, 18.5, 25.4, 32.1]
-    str_dynamic.line_chart(datos_grafico_simulados, y_label="Ganancia Neta (USDT)")
-else:
-    lista_precios_real = []
-    for trade in lista_trades:
-        lista_precios_real.append(float(trade.get("precio", 0.0)))
-    str_dynamic.line_chart(lista_precios_real, y_label="Precio ETH Ejecutado")
-
-str_dynamic.markdown("---")
-
-# ==================================================================
-# SECCIÓN 4: REGISTRO DE ÓRDENES EN RAW DATA
-# ==================================================================
-str_dynamic.markdown("#### 📑 REGISTRO DE ÓRDENES EN TIEMPO REAL (FLUJO SUPABASE)")
-
-if lista_trades:
-    str_dynamic.dataframe(lista_trades, use_container_width=True)
-else:
-    datos_tabla_simulada = [
-        dict(id=1, registro_fecha="2026-08-08 09:15", direccion="LONG", precio=3150.25),
-        dict(id=2, registro_fecha="2026-08-08 11:32", direccion="SHORT", precio=3195.40),
-        dict(id=3, registro_fecha="2026-08-08 14:10", direccion="LONG", precio=3170.10)
-    ]
-    str_dynamic.dataframe(datos_tabla_simulada, use_container_width=True)
-
-str_dynamic.markdown("---")
-str_dynamic.caption("Terminal Operativa Watson Elite v3.2 • Núcleo de Ejecución Táctica • Protegido de Extremo a Extremo")
+with col_der:
