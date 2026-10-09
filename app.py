@@ -7,7 +7,8 @@ import os
 # 1. CONFIGURACIÓN DE PÁGINA E INTERFAZ
 # ==========================================
 st.set_page_config(
-    page_title="Control AlgoCuant Watson - Maestro",
+    page_title="Mesa Algorítmica Watson Ultra",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -16,42 +17,21 @@ st.title("🤖 CONTROL ALGOCUANT WATSON")
 st.subheader("Panel Táctico de Monitoreo, Control de Riesgo y Bifurcación")
 
 # ==========================================
-# 2. GESTIÓN MULTI-VARIABLE DE CREDENCIALES
+# 2. GESTIÓN DE CREDENCIALES (SECRETS EXACTOS)
 # ==========================================
-# Intenta cargar buscando variaciones comunes en Secrets o Variables de Entorno (.env)
-SUPABASE_URL = (
-    st.secrets.get("SUPABASE_URL") or 
-    st.secrets.get("supabase_url") or 
-    st.secrets.get("supabase", {}).get("url") or 
-    os.getenv("SUPABASE_URL") or 
-    os.getenv("supabase_url") or ""
-)
+# Se leen exactamente como están guardadas en tus Secrets de Streamlit / .env
+SUPABASE_URL = st.secrets.get("URL_SUPABASE_TABLA", os.getenv("URL_SUPABASE_TABLA", ""))
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", ""))
 
-SUPABASE_KEY = (
-    st.secrets.get("SUPABASE_KEY") or 
-    st.secrets.get("supabase_key") or 
-    st.secrets.get("supabase", {}).get("key") or 
-    os.getenv("SUPABASE_KEY") or 
-    os.getenv("supabase_key") or ""
-)
+# Lectura preventiva de llaves de Binance por si se integran métricas directas
+BINANCE_API_KEY = st.secrets.get("BINANCE_API_KEY", os.getenv("BINANCE_API_KEY", ""))
+BINANCE_SECRET_KEY = st.secrets.get("BINANCE_SECRET_KEY", os.getenv("BINANCE_SECRET_KEY", ""))
 
-# Si fallan todas las búsquedas automáticas, te muestra qué nombres intentó buscar
 if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("🚨 Error Crítico: No se encontraron las credenciales en Secrets.")
-    st.info("💡 Asegúrate de que en la configuración de **Secrets de Streamlit Cloud** estén declaradas exactamente así:\n"
-            "```toml\n"
-            "SUPABASE_URL = \"tu_url_aqui\"\n"
-            "SUPABASE_KEY = \"tu_llave_aqui\"\n"
-            "```\n"
-            "O de esta forma si usas bloques:\n"
-            "```toml\n"
-            "[supabase]\n"
-            "url = \"tu_url_aqui\"\n"
-            "key = \"tu_llave_aqui\"\n"
-            "```")
+    st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' en Secrets.")
     st.stop()
 
-# Limpieza segura de la URL
+# Limpieza segura de la URL para evitar fallos de concatenación
 SUPABASE_URL = str(SUPABASE_URL).strip().rstrip("/")
 
 # Cabeceras globales para la API de Supabase
@@ -142,7 +122,7 @@ with col_derecha:
     if df_control.empty:
         st.warning("⚠️ No se pudieron cargar los estados de control desde 'control_bot'. Verifique la conexión o las credenciales.")
     else:
-        config_actual = df_control.iloc[0]
+        config_actual = df_control.iloc
         
         estado_bot = config_actual.get("estado_bot", "INACTIVO")
         apalancamiento_actual = int(config_actual.get("apalancamiento", 1))
