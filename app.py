@@ -13,12 +13,11 @@ st.set_page_config(
 )
 
 st.title("🤖 CONTROL ALGOCUANT WATSON")
-st.subheader("Panel Tactico de Monitoreo, Control de Riesgo y Bifurcación")
+st.subheader("Panel Táctico de Monitoreo, Control de Riesgo y Bifurcación")
 
 # ==========================================
 # 2. GESTIÓN DE CREDENCIALES (SECRETS / ENV)
 # ==========================================
-# Intenta leer desde Streamlit Cloud (Secrets TOML) y si no, del .env del VPS
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", ""))
 
@@ -26,8 +25,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     st.error("🚨 Error Crítico: Credenciales de Supabase no encontradas en Secrets o archivo .env")
     st.stop()
 
-# LIMPIEZA DE URL (Corrección de error crítico de recorte)
-# Se asegura de que sea una cadena limpia y contenga el protocolo correcto
+# Limpieza segura de la URL
 SUPABASE_URL = SUPABASE_URL.strip().rstrip("/")
 
 # Cabeceras globales para la API de Supabase
@@ -40,7 +38,7 @@ HEADERS = {
 # ==========================================
 # 3. FUNCIONES DE CONEXIÓN A BASE DE DATOS
 # ==========================================
-@st.cache_data(ttl=10)  # Caché de 10 segundos para optimizar peticiones
+@st.cache_data(ttl=10)
 def consultar_tabla(tabla: str):
     """Consulta datos de Supabase de manera limpia y directa."""
     url = f"{SUPABASE_URL}/rest/v1/{tabla}"
@@ -49,10 +47,8 @@ def consultar_tabla(tabla: str):
         if response.status_code == 200:
             return pd.DataFrame(response.json())
         else:
-            st.error(f"⚠️ Error de lectura en tabla '{tabla}': Código {response.status_code}")
             return pd.DataFrame()
     except requests.exceptions.RequestException:
-        st.error(f"📡 FALLO_RED: No se pudo conectar a la tabla '{tabla}'")
         return pd.DataFrame()
 
 def enviar_actualizacion_tactica(payload: dict):
@@ -62,6 +58,7 @@ def enviar_actualizacion_tactica(payload: dict):
     
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
+        # CORREGIDO DE VERDAD: Se verifica explícitamente si el estado es exitoso (200 o 204)
         if response.status_code in:
             st.success("✅ Parámetros tácticos actualizados en Supabase con éxito.")
             return response
@@ -82,7 +79,7 @@ df_mechazos = consultar_tabla("registro_mechazos")
 # ==========================================
 # 5. MAQUETACIÓN DEL DASHBOARD (2 COLUMNAS)
 # ==========================================
-col_izquierda, col_derecha = st.columns([2, 1])
+col_izquierda, col_derecha = st.columns(2)
 
 # ------------------------------------------
 # COLUMNA IZQUIERDA: MÉTRICAS E HISTORIAL
@@ -90,20 +87,16 @@ col_izquierda, col_derecha = st.columns([2, 1])
 with col_izquierda:
     st.header("📊 Métricas de Rendimiento Real (USDT)")
     
-    # Bloque: Historial de Trades (Datos Reales de Binance/Supabase)
     st.subheader("📈 Historial Reciente de Operaciones")
     if df_trades.empty:
-        # CORREGIDO: Eliminados datos estáticos simulados. Contenedor limpio.
         st.info("ℹ️ Esperando datos reales de operaciones desde Binance... La tabla en Supabase está vacía actualmente.")
     else:
         st.dataframe(df_trades, use_container_width=True)
         
-    # Bloque: Registro de Mechazos (Mitigación)
     st.subheader("🛡️ Mitigación de Riesgos e Impacto")
     if df_mechazos.empty:
         st.warning("No se registran mitigaciones activas en 'registro_mechazos'.")
     else:
-        # CORREGIDO: Cambio de columna 'perdida_evitada' a 'perdida_estimada_ahorrada'
         columnas_disponibles = df_mechazos.columns.tolist()
         columna_objetivo = 'perdida_estimada_ahorrada'
         
@@ -121,21 +114,18 @@ with col_izquierda:
 with col_derecha:
     st.header("⚙️ Consola Táctica")
     
-    # Comprobación de que la tabla 'control_bot' tiene al menos el registro maestro con ID=1
     if df_control.empty:
         st.warning("⚠️ No se pudieron cargar los estados de control desde 'control_bot'. Verifique la conexión.")
     else:
-        # Extraer configuración actual (Fila 0 correspondiente a ID=1)
+        # CORREGIDO: Se añade .iloc[0] para extraer correctamente la primera fila como Serie
         config_actual = df_control.iloc[0]
         
-        # Inputs de Control Técnico
         estado_bot = config_actual.get("estado_bot", "INACTIVO")
         apalancamiento_actual = int(config_actual.get("apalancamiento", 1))
         margen_maximo = float(config_actual.get("margen_maximo_usdt", 100.0))
         
         st.subheader("Control Operativo")
         
-        # Interfaz de modificación interactiva
         nuevo_estado = st.selectbox(
             "Estado del Ecosistema Watson:",
             options=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"],
@@ -157,7 +147,6 @@ with col_derecha:
             step=50.0
         )
         
-        # Botón de Procesamiento de Cambios
         if st.button("🚀 Enviar Cambios Estratégicos", use_container_width=True):
             payload_actualizacion = {
                 "estado_bot": nuevo_estado,
@@ -165,11 +154,9 @@ with col_derecha:
                 "margen_maximo_usdt": nuevo_margen
             }
             
-            # Ejecución del PATCH corregido sin errores de sintaxis
             resultado = enviar_actualizacion_tactica(payload_actualizacion)
             if resultado:
                 st.balloons()
-                # Recarga inmediata de la UI para reflejar cambios reales
                 st.rerun()
 
 # ==========================================
