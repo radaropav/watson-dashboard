@@ -222,7 +222,7 @@ with col_izq:
         )
         str_dynamic.plotly_chart(fig_equity, use_container_width=True)
 
-    str_dynamic.markdown("<br>### Monitoreo de Actividad & Mitigación", unsafe_allow_html=True)
+    str_dynamic.markdown("<br>### Monitoreo de Actividad and Mitigación", unsafe_allow_html=True)
     c1, c2, c3 = str_dynamic.columns(3)
     
     with c1:
