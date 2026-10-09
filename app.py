@@ -16,17 +16,43 @@ st.title("🤖 CONTROL ALGOCUANT WATSON")
 st.subheader("Panel Táctico de Monitoreo, Control de Riesgo y Bifurcación")
 
 # ==========================================
-# 2. GESTIÓN DE CREDENCIALES (SECRETS / ENV)
+# 2. GESTIÓN MULTI-VARIABLE DE CREDENCIALES
 # ==========================================
-SUPABASE_URL = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", ""))
+# Intenta cargar buscando variaciones comunes en Secrets o Variables de Entorno (.env)
+SUPABASE_URL = (
+    st.secrets.get("SUPABASE_URL") or 
+    st.secrets.get("supabase_url") or 
+    st.secrets.get("supabase", {}).get("url") or 
+    os.getenv("SUPABASE_URL") or 
+    os.getenv("supabase_url") or ""
+)
 
+SUPABASE_KEY = (
+    st.secrets.get("SUPABASE_KEY") or 
+    st.secrets.get("supabase_key") or 
+    st.secrets.get("supabase", {}).get("key") or 
+    os.getenv("SUPABASE_KEY") or 
+    os.getenv("supabase_key") or ""
+)
+
+# Si fallan todas las búsquedas automáticas, te muestra qué nombres intentó buscar
 if not SUPABASE_URL or not SUPABASE_KEY:
-    st.error("🚨 Error Crítico: Credenciales de Supabase no encontradas en Secrets o archivo .env")
+    st.error("🚨 Error Crítico: No se encontraron las credenciales en Secrets.")
+    st.info("💡 Asegúrate de que en la configuración de **Secrets de Streamlit Cloud** estén declaradas exactamente así:\n"
+            "```toml\n"
+            "SUPABASE_URL = \"tu_url_aqui\"\n"
+            "SUPABASE_KEY = \"tu_llave_aqui\"\n"
+            "```\n"
+            "O de esta forma si usas bloques:\n"
+            "```toml\n"
+            "[supabase]\n"
+            "url = \"tu_url_aqui\"\n"
+            "key = \"tu_llave_aqui\"\n"
+            "```")
     st.stop()
 
 # Limpieza segura de la URL
-SUPABASE_URL = SUPABASE_URL.strip().rstrip("/")
+SUPABASE_URL = str(SUPABASE_URL).strip().rstrip("/")
 
 # Cabeceras globales para la API de Supabase
 HEADERS = {
@@ -58,7 +84,6 @@ def enviar_actualizacion_tactica(payload: dict):
     
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
-        # CORREGIDO SIN CONDICIONES HUÉRFANAS: Comparación explícita de códigos HTTP
         if response.status_code == 200 or response.status_code == 204:
             st.success("✅ Parámetros tácticos actualizados en Supabase con éxito.")
             return response
@@ -115,9 +140,8 @@ with col_derecha:
     st.header("⚙️ Consola Táctica")
     
     if df_control.empty:
-        st.warning("⚠️ No se pudieron cargar los estados de control desde 'control_bot'. Verifique la conexión.")
+        st.warning("⚠️ No se pudieron cargar los estados de control desde 'control_bot'. Verifique la conexión o las credenciales.")
     else:
-        # Extraer correctamente la primera fila como una Serie de Pandas
         config_actual = df_control.iloc[0]
         
         estado_bot = config_actual.get("estado_bot", "INACTIVO")
