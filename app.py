@@ -92,7 +92,7 @@ HEADERS = {
 # 3. TELEMETRÍA EN TIEMPO REAL: BINANCE FUTUROS USD-M
 # ==========================================
 def obtener_balance_binance_futuros():
-    """Consulta de forma exclusiva el saldo real y el margen disponible de la billetera de Futuros."""
+    """Consulta el saldo real y el margen disponible de la billetera de Futuros."""
     if not BINANCE_API_KEY or not BINANCE_SECRET_KEY:
         return 0.0, 0.0
     
@@ -130,7 +130,9 @@ def consultar_tabla(tabla: str):
     try:
         response = requests.get(url, headers=HEADERS)
         if response.status_code == 200:
-            return pd.DataFrame(response.json())
+            data = response.json()
+            if data and len(data) > 0:
+                return pd.DataFrame(data)
         return pd.DataFrame()
     except Exception:
         return pd.DataFrame()
@@ -140,7 +142,6 @@ def enviar_actualizacion_tactica(payload: dict):
     headers_patch = {**HEADERS, "Prefer": "return=minimal"}
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
-        # SINTAXIS CORREGIDA: Comparación de estado limpia sin 'in' huérfano
         if response.status_code == 200 or response.status_code == 204:
             return True
         return False
@@ -202,18 +203,33 @@ with col_izq:
 with col_der:
     st.markdown("### ⚙️ Panel de Infraestructura Táctica")
     
+    # PROTECCIÓN ABSOLUTA CONTRA ATTRIBUTEERROR:
+    # Se inicializan las variables por defecto en un diccionario local antes de evaluar el dataframe
+    config_actual = {
+        "estado_bot": "INACTIVO",
+        "apalancamiento": 1,
+        "margen_maximo_usdt": 100.0
+    }
+    
     if not conexion_exitosa:
-        st.error("⚠️ Alerta: Sin respuesta de sincronización de parámetros de control.")
-        estado_bot = "INACTIVO"
-        apalancamiento_actual = 1
-        margen_maximo = 100.0
+        st.warning("⚠️ Sin comunicación con la tabla de control en Supabase. Usando parámetros locales de respaldo.")
     else:
-        config_actual = df_control.iloc
-        estado_bot = config_actual.get("estado_bot", "INACTIVO")
-        apalancamiento_actual = int(config_actual.get("apalancamiento", 1))
-        margen_maximo = float(config_actual.get("margen_maximo_usdt", 100.0))
+        try:
+            # Extrae la primera fila únicamente si el DataFrame contiene información estructural válida
+            if len(df_control) > 0:
+                fila_real = df_control.iloc[0]
+                config_actual["estado_bot"] = fila_real.get("estado_bot", "INACTIVO")
+                config_actual["apalancamiento"] = int(fila_real.get("apalancamiento", 1))
+                config_actual["margen_maximo_usdt"] = float(fila_real.get("margen_maximo_usdt", 100.0))
+        except Exception:
+            pass
 
-    # Formulario Táctico Limpio sin bloques HTML huérfanos que dejen espacios en blanco
+    # Extracción de variables sanitizadas garantizadas (Nunca serán NoneType)
+    estado_bot = config_actual["estado_bot"]
+    apalancamiento_actual = config_actual["apalancamiento"]
+    margen_maximo = config_actual["margen_maximo_usdt"]
+
+    # Formulario Táctico Limpio sin bloques HTML que alteren la renderización
     st.markdown('#### Configuración Operativa Real')
     
     nuevo_estado = st.selectbox(
@@ -225,24 +241,3 @@ with col_der:
     nuevo_apalancamiento = st.slider(
         "Apalancamiento de Posiciones:", 
         min_value=1, 
-        max_value=20, 
-        value=apalancamiento_actual
-    )
-    
-    nuevo_margen = st.number_input(
-        "Margen Límite de Exposición (USDT):", 
-        min_value=10.0, 
-        max_value=100000.0, 
-        value=margen_maximo,
-        step=50.0
-    )
-    
-    if st.button("🚀 Inyectar Parámetros de Control", use_container_width=True):
-        if not conexion_exitosa:
-            st.error("❌ Error de envío: No hay conexión activa.")
-        else:
-            payload = {
-                "estado_bot": nuevo_estado,
-                "apalancamiento": nuevo_apalancamiento,
-                "margen_maximo_usdt": nuevo_margen
-            }
