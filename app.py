@@ -2,9 +2,6 @@ import os
 import requests
 import pandas as pd
 import streamlit as st
-import hmac
-import hashlib
-import time
 
 # ==========================================
 # 1. CONFIGURACIÓN DE PÁGINA E INTERFAZ PREMIUM
@@ -16,6 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Estilos CSS Premium de la Mesa Algorítmica Watson
 estilo_css_premium = """
 <style>
     body, .stApp {
@@ -68,17 +66,16 @@ estilo_css_premium = """
 st.markdown(estilo_css_premium, unsafe_allow_html=True)
 
 # ==========================================
-# 2. GESTIÓN DE CREDENCIALES
+# 2. GESTIÓN DE CREDENCIALES (SECRETS EXACTOS)
 # ==========================================
 URL_RAW = st.secrets.get("URL_SUPABASE_TABLA", os.getenv("URL_SUPABASE_TABLA", ""))
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", ""))
-BINANCE_API_KEY = st.secrets.get("BINANCE_API_KEY", os.getenv("BINANCE_API_KEY", ""))
-BINANCE_SECRET_KEY = st.secrets.get("BINANCE_SECRET_KEY", os.getenv("BINANCE_SECRET_KEY", ""))
 
 if not URL_RAW or not SUPABASE_KEY:
-    st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' en la configuración.")
+    st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' en Secrets.")
     st.stop()
 
+# Formateo automático de URL para la API REST nativa de Supabase
 URL_LIMPIA = str(URL_RAW).strip().rstrip("/")
 SUPABASE_REST_URL = URL_LIMPIA if URL_LIMPIA.endswith("/rest/v1") else f"{URL_LIMPIA}/rest/v1"
 
@@ -89,40 +86,7 @@ HEADERS = {
 }
 
 # ==========================================
-# 3. TELEMETRÍA EN TIEMPO REAL: BINANCE FUTUROS USD-M
-# ==========================================
-def obtener_balance_binance_futuros():
-    """Consulta el saldo real y el margen disponible de la billetera de Futuros."""
-    if not BINANCE_API_KEY or not BINANCE_SECRET_KEY:
-        return 0.0, 0.0
-    
-    timestamp = int(time.time() * 1000)
-    query_string = f"timestamp={timestamp}"
-    signature = hmac.new(
-        BINANCE_SECRET_KEY.encode('utf-8'), 
-        query_string.encode('utf-8'), 
-        hashlib.sha256
-    ).hexdigest()
-    
-    headers = {"X-MBX-APIKEY": BINANCE_API_KEY}
-    url_fapi = f"https://binance.com?{query_string}&signature={signature}"
-    
-    try:
-        response = requests.get(url_fapi, headers=headers, timeout=4)
-        if response.status_code == 200:
-            datos = response.json()
-            balance_total = float(datos.get("totalWalletBalance", 0.0))
-            disponible_margen = float(datos.get("maxWithdrawAvailable", 0.0))
-            return balance_total, disponible_margen
-        return 0.0, 0.0
-    except Exception:
-        return 0.0, 0.0
-
-# Lectura directa de fondos en Futuros
-balance_real, disponible_real = obtener_balance_binance_futuros()
-
-# ==========================================
-# 4. CONEXIÓN Y CONSULTAS A SUPABASE
+# 3. CONEXIÓN Y CONSULTAS A SUPABASE
 # ==========================================
 @st.cache_data(ttl=2)
 def consultar_tabla(tabla: str):
@@ -138,6 +102,7 @@ def consultar_tabla(tabla: str):
         return pd.DataFrame()
 
 def enviar_actualizacion_tactica(payload: dict):
+    # Apunta exactamente a la fila maestra ID 1 de tu control
     url = f"{SUPABASE_REST_URL}/control_bot?id=eq.1"
     headers_patch = {**HEADERS, "Prefer": "return=minimal"}
     try:
@@ -148,6 +113,7 @@ def enviar_actualizacion_tactica(payload: dict):
     except Exception:
         return False
 
+# Carga de datos reales mapeados con tu base de datos
 df_control = consultar_tabla("control_bot")
 df_trades = consultar_tabla("historial_trades")
 df_mechazos = consultar_tabla("registro_mechazos")
@@ -155,57 +121,53 @@ df_mechazos = consultar_tabla("registro_mechazos")
 conexion_exitosa = not df_control.empty
 
 # ==========================================
-# 5. MAQUETACIÓN GENERAL DEL DASHBOARD
+# 4. DISEÑO DE INTERFAZ GENERAL (BARRA LATERAL DE INFRAESTRUCTURA)
 # ==========================================
-
-# --- Barra Lateral: Telemetría de Cuenta ---
 with st.sidebar:
     st.markdown("<h2 style='color:#8b5cf6;'>WATSON QUANT</h2>", unsafe_allow_html=True)
-    st.selectbox("Selección de Infraestructura", ["Bot Watson Ultra Custom", "Bot Depredador Estándar (4H)"])
+    st.selectbox("Selección de Infraestructura", ["Bot 1 - Multiactivo (Frankfurt)", "Bot 2 - Volatilidad (Bifurcación)"])
     st.markdown("---")
-    st.markdown("### Telemetría de Cuenta (Futuros)")
+    st.markdown("### Telemetría de Red")
     
-    st.markdown(f'<div class="card-indicador"><div class="metric-label">Balance Total USDT</div><div class="metric-val">${balance_real:,.2f}</div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="card-indicador"><div class="metric-label">Disponible Margen</div><div class="metric-val">${disponible_real:,.2f}</div></div>', unsafe_allow_html=True)
+    val_estado = "CONECTADO" if conexion_exitosa else "FALLO_RE"
+    color_estado = "#10b981" if conexion_exitosa else "#ef4444"
+    st.markdown(f'<div class="card-indicador"><div class="metric-label">Estado en Nube</div><div class="metric-val" style="color:{color_estado};">{val_estado}</div></div>', unsafe_allow_html=True)
 
-# --- Contenedor Principal ---
 st.markdown("<h1 style='text-align: center; color: #ffffff;'>⚡ MESA ALGORÍTMICA WATSON ULTRA</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #94a3b8;'>Ecosistema de Monitoreo Táctico, Control de Riesgo y Bifurcación en Nube</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #94a3b8;'>Consola de Sincronización Estricta con Servidores en Frankfurt</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 col_izq, col_der = st.columns([1.2, 1])
 
-# --- Columna Izquierda: Actividad y Mitigación ---
+# --- Columna Izquierda: Actividad Real del VPS ---
 with col_izq:
     st.markdown("### 📊 Monitoreo de Actividad y Mitigación")
     
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1:
-        val_estado = "CONECTADO" if conexion_exitosa else "FALLO_RE"
-        color_estado = "#10b981" if conexion_exitosa else "#ef4444"
-        st.markdown(f'<div class="card-indicador"><div class="metric-label">Estado en Nube</div><div class="metric-val" style="color:{color_estado};">{val_estado}</div></div>', unsafe_allow_html=True)
-    with c2:
         total_mechazos = len(df_mechazos) if not df_mechazos.empty else 0
-        st.markdown(f'<div class="card-indicador"><div class="metric-label">Falsas Rupturas</div><div class="metric-val">{total_mechazos} Mechazos</div></div>', unsafe_allow_html=True)
-    with c3:
+        st.markdown(f'<div class="card-indicador"><div class="metric-label">Falsas Rupturas Evitadas</div><div class="metric-val">{total_mechazos} Mechazos</div></div>', unsafe_allow_html=True)
+    with c2:
+        # El bot registra en 'perdida_evitada' un valor fijo de 5.50. Se calcula la sumatoria real acumulada.
         total_ahorrado = 0.0
-        if not df_mechazos.empty and 'perdida_estimada_ahorrada' in df_mechazos.columns:
-            total_ahorrado = df_mechazos['perdida_estimada_ahorrada'].astype(float).sum()
+        if not df_mechazos.empty and 'perdida_evitada' in df_mechazos.columns:
+            total_ahorrado = df_mechazos['perdida_evitada'].astype(float).sum()
         st.markdown(f'<div class="card-indicador"><div class="metric-label">Capital Salvaguardado</div><div class="metric-val">${total_ahorrado:,.2f}</div></div>', unsafe_allow_html=True)
 
-    st.markdown("#### 📈 Historial Reciente de Operaciones Real")
+    st.markdown("#### 📈 Historial Reciente de Operaciones Real (Supabase)")
     if df_trades.empty:
-        st.info("ℹ️ Esperando ejecuciones de órdenes desde Binance... Sin operaciones registradas en Supabase.")
+        st.info("ℹ️ Esperando ejecuciones de órdenes desde el VPS... Sin operaciones registradas en 'historial_trades'.")
     else:
         st.dataframe(df_trades, use_container_width=True)
 
-# --- Columna Derecha: Consola Táctica ---
+# --- Columna Derecha: Consola Táctica de Parámetros ---
 with col_der:
     st.markdown("### ⚙️ Panel de Infraestructura Táctica")
     
+    # Estructura interna de contingencia garantizada
     config_actual = {
-        "estado_bot": "INACTIVO",
-        "apalancamiento": 1,
+        "estado": "OFF",
+        "apalancamiento": 10,
         "margen_maximo_usdt": 100.0
     }
     
@@ -215,37 +177,55 @@ with col_der:
         try:
             if len(df_control) > 0:
                 fila_real = df_control.iloc[0]
-                config_actual["estado_bot"] = fila_real.get("estado_bot", "INACTIVO")
-                config_actual["apalancamiento"] = int(fila_real.get("apalancamiento", 1))
+                # AJUSTE CRÍTICO: Lee la columna 'estado' exactamente como la busca tu bot
+                config_actual["estado"] = str(fila_real.get("estado", "OFF")).upper()
+                config_actual["apalancamiento"] = int(fila_real.get("apalancamiento", 10))
                 config_actual["margen_maximo_usdt"] = float(fila_real.get("margen_maximo_usdt", 100.0))
         except Exception:
             pass
 
-    estado_bot = config_actual["estado_bot"]
+    estado_actual_bot = config_actual["estado"]
     apalancamiento_actual = config_actual["apalancamiento"]
     margen_maximo = config_actual["margen_maximo_usdt"]
 
-    st.markdown('#### Configuración Operativa Real')
-    
-    nuevo_estado = st.selectbox(
-        "Modificar Estado Operativo Watson:",
-        options=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"],
-        index=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"].index(estado_bot) if estado_bot in ["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"] else 2
-    )
-    
-    # CORREGIDO Y VERIFICADO: Paréntesis de cierre restaurado perfectamente
-    nuevo_apalancamiento = st.slider(
-        "Apalancamiento de Posiciones:", 
-        min_value=1, 
-        max_value=20, 
-        value=apalancamiento_actual
-    )
-    
-    nuevo_margen = st.number_input(
-        "Margen Límite de Exposición (USDT):", 
-        min_value=10.0, 
-        max_value=100000.0, 
-        value=margen_maximo,
-        step=50.0
-    )
-    
+    with st.container():
+        st.markdown('#### Configuración Operativa Real')
+        
+        # HOMOLOGACIÓN TOTAL: Las opciones son exactamente los estados que tu bot procesa
+        nuevo_estado = st.selectbox(
+            "Modificar Estado Operativo Watson (Mapeo Directo):",
+            options=["PREDADOR", "APLANAMIENTO", "OFF"],
+            index=["PREDADOR", "APLANAMIENTO", "OFF"].index(estado_actual_bot) if estado_actual_bot in ["PREDADOR", "APLANAMIENTO", "OFF"] else 2
+        )
+        
+        nuevo_apalancamiento = st.slider(
+            "Apalancamiento de Posiciones (LEVERAGE):", 
+            min_value=1, 
+            max_value=20, 
+            value=apalancamiento_actual
+        )
+        
+        nuevo_margen = st.number_input(
+            "Margen Límite de Exposición (USDT):", 
+            min_value=10.0, 
+            max_value=100000.0, 
+            value=margen_maximo,
+            step=50.0
+        )
+        
+        if st.button("🚀 Inyectar Parámetros de Control", use_container_width=True):
+            if not conexion_exitosa:
+                st.error("❌ Error de envío: No hay conexión activa con la base de datos.")
+            else:
+                # payload estructurado con la columna 'estado' exacta para tu función leer_comando_supabase()
+                payload = {
+                    "estado": nuevo_estado,
+                    "apalancamiento": nuevo_apalancamiento,
+                    "margen_maximo_usdt": nuevo_margen
+                }
+                if enviar_actualizacion_tactica(payload):
+                    st.balloons()
+                    st.rerun()
+
+st.markdown("---")
+st.caption("Mesa Algorítmica Watson Ultra • DigitalOcean VPS • Conectores Sincronizados v2.0")
