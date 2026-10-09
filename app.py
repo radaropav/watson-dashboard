@@ -104,7 +104,8 @@ def enviar_actualizacion_tactica(payload: dict):
     headers_patch = {**HEADERS, "Prefer": "return=minimal"}
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
-        if response.status_code in:
+        # CORREGIDO: Comparación limpia sin el operador 'in' roto
+        if response.status_code == 200 or response.status_code == 204:
             st.success("✅ Parámetros tácticos sincronizados.")
             return True
         return False
@@ -128,7 +129,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Telemetría de Cuenta")
     
-    # Contenedores Premium en Barra Lateral
     st.markdown('<div class="card-indicador"><div class="metric-label">Balance Total USDT</div><div class="metric-val">$0.00</div></div>', unsafe_allow_html=True)
     st.markdown('<div class="card-indicador"><div class="metric-label">Disponible Margen</div><div class="metric-val">$0.00</div></div>', unsafe_allow_html=True)
 
@@ -143,14 +143,12 @@ col_izq, col_der = st.columns([1.2, 1])
 with col_izq:
     st.markdown("### 📊 Monitoreo de Actividad y Mitigación")
     
-    # Fila de minicards de estado
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown('<div class="card-indicador"><div class="metric-label">Estado en Nube</div><div class="metric-val" style="color:#ef4444;">FALLO_RE</div></div>', unsafe_allow_html=True)
     with c2:
         st.markdown('<div class="card-indicador"><div class="metric-label">Falsas Rupturas</div><div class="metric-val">0 Mechazos</div></div>', unsafe_allow_html=True)
     with c3:
-        # Cálculo dinámico si existe la columna corregida
         total_ahorrado = 0.0
         if not df_mechazos.empty and 'perdida_estimada_ahorrada' in df_mechazos.columns:
             total_ahorrado = df_mechazos['perdida_estimada_ahorrada'].astype(float).sum()
@@ -166,12 +164,9 @@ with col_izq:
 with col_der:
     st.markdown("### ⚙️ Panel de Infraestructura Táctica")
     
-    # Manejo seguro si la base de datos devuelve vacío para control_bot
     if df_control.empty:
         st.error("⚠️ Error de Red / Credenciales: No se pudo extraer la fila de configuración de 'control_bot'.")
-        st.info("💡 La sintaxis del script está limpia. El error es que Supabase rechazó la petición (revisa si la URL o la KEY en los Secrets tienen espacios extra).")
         
-        # Valores por defecto para que la interfaz táctica NO desaparezca de la pantalla
         estado_bot = "INACTIVO"
         apalancamiento_actual = 1
         margen_maximo = 100.0
@@ -181,7 +176,6 @@ with col_der:
         apalancamiento_actual = int(config_actual.get("apalancamiento", 1))
         margen_maximo = float(config_actual.get("margen_maximo_usdt", 100.0))
 
-    # Formulario Táctico (Permanecerá visible en pantalla siempre)
     st.markdown('<div class="card-indicador">', unsafe_allow_html=True)
     st.markdown("#### Configuración Operativa Real")
     
