@@ -58,8 +58,8 @@ def enviar_actualizacion_tactica(payload: dict):
     
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
-        # CORREGIDO DE VERDAD: Se verifica explícitamente si el estado es exitoso (200 o 204)
-        if response.status_code in:
+        # CORREGIDO SIN CONDICIONES HUÉRFANAS: Comparación explícita de códigos HTTP
+        if response.status_code == 200 or response.status_code == 204:
             st.success("✅ Parámetros tácticos actualizados en Supabase con éxito.")
             return response
         else:
@@ -117,7 +117,7 @@ with col_derecha:
     if df_control.empty:
         st.warning("⚠️ No se pudieron cargar los estados de control desde 'control_bot'. Verifique la conexión.")
     else:
-        # CORREGIDO: Se añade .iloc[0] para extraer correctamente la primera fila como Serie
+        # Extraer correctamente la primera fila como una Serie de Pandas
         config_actual = df_control.iloc[0]
         
         estado_bot = config_actual.get("estado_bot", "INACTIVO")
