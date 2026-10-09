@@ -88,9 +88,7 @@ def obtener_balance_futuros_real():
     query_string = f"timestamp={timestamp}&recvWindow=10000"
     firma = generar_firma_binance(query_string)
     
-    url_segmentada = [os.environ.get("BINANCE_ENDPOINT_BASE", "https://binance.com"), "/fapi/v2/account"]
-    endpoint_final = "".join(url_segmentada)
-    
+    endpoint_final = "https://binance.com"
     headers = {"X-MBX-APIKEY": API_KEY_BINANCE}
     params = {"timestamp": timestamp, "recvWindow": 10000, "signature": firma}
     
@@ -120,7 +118,8 @@ def consulting_master_row(instancia_id):
         return {"estado": "MODO_LOCAL", "apalancamiento": 10, "porcentaje_capital": 35}
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')}/rest/v1/control_bot?id=eq.{instancia_id}"
+    # Construcción directa limpia usando la variable cruda del .env sin cortes
+    endpoint = f"{URL_BASE_SUPABASE}?id=eq.{instancia_id}"
     
     try:
         respuesta = requests.get(endpoint, headers=headers, timeout=6)
@@ -135,7 +134,7 @@ def actualizar_parametro_supabase(instancia_id, payload):
         return False
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')}/rest/v1/control_bot?id=eq.{instancia_id}"
+    endpoint = f"{URL_BASE_SUPABASE}?id=eq.{instancia_id}"
     
     try:
         respuesta = requests.patch(endpoint, headers=headers, json=payload, timeout=6)
@@ -148,7 +147,9 @@ def consultar_metricas_tabla(nombre_tabla):
         return []
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE.split('/rest/v1/')}/rest/v1/{nombre_tabla}?select=*"
+    # Reemplazo seguro de segmento final para brincar entre tablas
+    base_endpoint = URL_BASE_SUPABASE.split("?")[0] if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
+    endpoint = base_endpoint.replace("control_bot", nombre_tabla)
     
     try:
         respuesta = requests.get(endpoint, headers=headers, timeout=6)
@@ -227,11 +228,12 @@ with col_izq:
     c1, c2, c3 = str_dynamic.columns(3)
     
     with c1:
-        color_estado = "#10b981" if config_remota.get("estado") in ["PREDADOR", "APLANAMIENTO"] else "#ef4444"
+        estado_actual_txt = str(config_remota.get("estado", "OFF")).upper()
+        color_estado = "#10b981" if estado_actual_txt in ["PREDADOR", "APLANAMIENTO"] else "#ef4444"
         str_dynamic.markdown(f"""
         <div class='card-indicador'>
             <p class='metric-label'>Estado en Nube</p>
-            <p class='metric-val' style='color:{color_estado};'>{config_remota.get("estado", "OFF")}</p>
+            <p class='metric-val' style='color:{color_estado};'>{estado_actual_txt}</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -254,4 +256,3 @@ with col_izq:
         """, unsafe_allow_html=True)
 
 with col_der:
-    str_dynamic.markdown("### Consola de Infraestructura Táctica")
