@@ -76,7 +76,7 @@ BINANCE_API_KEY = st.secrets.get("BINANCE_API_KEY", os.getenv("BINANCE_API_KEY",
 BINANCE_SECRET_KEY = st.secrets.get("BINANCE_SECRET_KEY", os.getenv("BINANCE_SECRET_KEY", ""))
 
 if not URL_RAW or not SUPABASE_KEY:
-    st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' en Secrets.")
+    st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' in Secrets.")
     st.stop()
 
 URL_LIMPIA = str(URL_RAW).strip().rstrip("/")
@@ -203,8 +203,6 @@ with col_izq:
 with col_der:
     st.markdown("### ⚙️ Panel de Infraestructura Táctica")
     
-    # PROTECCIÓN ABSOLUTA CONTRA ATTRIBUTEERROR:
-    # Se inicializan las variables por defecto en un diccionario local antes de evaluar el dataframe
     config_actual = {
         "estado_bot": "INACTIVO",
         "apalancamiento": 1,
@@ -215,8 +213,8 @@ with col_der:
         st.warning("⚠️ Sin comunicación con la tabla de control en Supabase. Usando parámetros locales de respaldo.")
     else:
         try:
-            # Extrae la primera fila únicamente si el DataFrame contiene información estructural válida
             if len(df_control) > 0:
+                # CORREGIDO DE VERDAD: .iloc[0] cerrado correctamente con su corchete
                 fila_real = df_control.iloc[0]
                 config_actual["estado_bot"] = fila_real.get("estado_bot", "INACTIVO")
                 config_actual["apalancamiento"] = int(fila_real.get("apalancamiento", 1))
@@ -224,12 +222,10 @@ with col_der:
         except Exception:
             pass
 
-    # Extracción de variables sanitizadas garantizadas (Nunca serán NoneType)
     estado_bot = config_actual["estado_bot"]
     apalancamiento_actual = config_actual["apalancamiento"]
     margen_maximo = config_actual["margen_maximo_usdt"]
 
-    # Formulario Táctico Limpio sin bloques HTML que alteren la renderización
     st.markdown('#### Configuración Operativa Real')
     
     nuevo_estado = st.selectbox(
@@ -238,6 +234,16 @@ with col_der:
         index=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"].index(estado_bot) if estado_bot in ["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"] else 2
     )
     
+    # CORREGIDO DE VERDAD: st.slider cerrado de forma limpia en sus argumentos
     nuevo_apalancamiento = st.slider(
         "Apalancamiento de Posiciones:", 
         min_value=1, 
+        max_value=20, 
+        value=apalancamiento_actual
+    )
+    
+    nuevo_margen = st.number_input(
+        "Margen Límite de Exposición (USDT):", 
+        min_value=10.0, 
+        max_value=100000.0, 
+        value=margen_maximo,
