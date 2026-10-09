@@ -89,49 +89,58 @@ HEADERS = {
 }
 
 # ==========================================
-# 3. CONEXIÓN EN TIEMPO REAL CON BINANCE
+# 3. CONEXIÓN EN TIEMPO REAL CON BINANCE (SPOT + FUTUROS)
 # ==========================================
-def obtener_balance_binance_usdt():
-    """Consulta el balance real de la billetera Spot de Binance en USDT."""
+def obtener_balance_binance_total():
+    """Consulta balances cruzando endpoints de Spot y Futuros (USD-M) en Binance."""
     if not BINANCE_API_KEY or not BINANCE_SECRET_KEY:
-        return 0.0, "API Keys Faltantes"
+        return 0.0, 0.0
     
-    base_url = "https://binance.com"
-    endpoint = "/api/v3/account"
     timestamp = int(time.time() * 1000)
     query_string = f"timestamp={timestamp}"
-    
-    # Firma HMAC SHA256 obligatoria para endpoints privados de Binance
-    signature = hmac.new(
-        BINANCE_SECRET_KEY.encode('utf-8'),
-        query_string.encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-    
-    url = f"{base_url}{endpoint}?{query_string}&signature={signature}"
+    signature = hmac.new(BINANCE_SECRET_KEY.encode('utf-8'), query_string.encode('utf-8'), hashlib.sha256).hexdigest()
     headers = {"X-MBX-APIKEY": BINANCE_API_KEY}
     
+    total_balance = 0.0
+    total_disponible = 0.0
+    
+    # Intento 1: Consultar Futuros USD-M (Billetera habitual de Trading Bots apalancados)
     try:
-        res = requests.get(url, headers=headers, timeout=4)
-        if res.status_code == 200:
-            datos_cuenta = res.json()
-            balances = datos_cuenta.get("balances", [])
-            for asset in balances:
-                if asset.get("asset") == "USDT":
-                    total_fondos = float(asset.get("free", 0.0)) + float(asset.get("locked", 0.0))
-                    disponible = float(asset.get("free", 0.0))
-                    return total_fondos, disponible
-        return 0.0, 0.0
+        url_fapi = f"https://binance.com?{query_string}&signature={signature}"
+        res_f = requests.get(url_fapi, headers=headers, timeout=3)
+        if res_f.status_code == 200:
+            datos_f = res_f.json()
+            total_balance += float(datos_f.get("totalWalletBalance", 0.0))
+            total_disponible += float(datos_f.get("maxWithdrawAvailable", 0.0))
+            if total_balance > 0:
+                return total_balance, total_disponible
     except Exception:
-        return 0.0, 0.0
+        pass
+        
+    # Intento 2: Fallback a cuenta Spot si futuros devuelve 0 o falla
+    try:
+        url_spot = f"https://binance.com?{query_string}&signature={signature}"
+        res_s = requests.get(url_spot, headers=headers, timeout=3)
+        if res_s.status_code == 200:
+            balances_s = res_s.json().get("balances", [])
+            for asset in balances_s:
+                if asset.get("asset") == "USDT":
+                    spot_total = float(asset.get("free", 0.0)) + float(asset.get("locked", 0.0))
+                    spot_free = float(asset.get("free", 0.0))
+                    total_balance += spot_total
+                    total_disponible += spot_free
+    except Exception:
+        pass
 
-# Ejecutar lectura de capital real
-balance_real, disponible_real = obtener_balance_binance_usdt()
+    return total_balance, total_disponible
+
+# Iniciar lectura de balances reales
+balance_real, disponible_real = obtener_balance_binance_total()
 
 # ==========================================
-# 4. CONEXIÓN Y CONSULTAS A SUPERBASE
+# 4. CONEXIÓN Y CONSULTAS A SUPABASE
 # ==========================================
-@st.cache_data(ttl=3)
+@st.cache_data(ttl=2)
 def consultar_tabla(tabla: str):
     url = f"{SUPABASE_REST_URL}/{tabla}"
     try:
@@ -147,7 +156,7 @@ def enviar_actualizacion_tactica(payload: dict):
     headers_patch = {**HEADERS, "Prefer": "return=minimal"}
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
-        return response.status_code in [200, 204]
+        return response.status_code in
     except Exception:
         return False
 
@@ -158,20 +167,20 @@ df_mechazos = consultar_tabla("registro_mechazos")
 conexion_exitosa = not df_control.empty
 
 # ==========================================
-# 5. DISEÑO DE INTERFAZ GENERAL
+# 5. DISEÑO DE INTERFAZ GENERAL (SIDEBAR + COLUMNAS)
 # ==========================================
 
-# --- Barra Lateral: Telemetría de Cuenta Vinculada ---
+# --- Barra Lateral: Telemetría de Cuenta ---
 with st.sidebar:
     st.markdown("<h2 style='color:#8b5cf6;'>WATSON QUANT</h2>", unsafe_allow_html=True)
     st.selectbox("Selección de Infraestructura", ["Bot Depredador Estándar (4H)", "Bot Watson Ultra Custom"])
     st.markdown("---")
     st.markdown("### Telemetría de Cuenta")
     
-    # DINÁMICO: Inyección de datos consultados mediante API de Binance
     st.markdown(f'<div class="card-indicador"><div class="metric-label">Balance Total USDT</div><div class="metric-val">${balance_real:,.2f}</div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="card-indicador"><div class="metric-label">Disponible Margen</div><div class="metric-val">${disponible_real:,.2f}</div></div>', unsafe_allow_html=True)
 
+# --- Contenedor Principal ---
 st.markdown("<h1 style='text-align: center; color: #ffffff;'>⚡ MESA ALGORÍTMICA WATSON ULTRA</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #94a3b8;'>Ecosistema de Monitoreo Táctico, Control de Riesgo y Bifurcación en Nube</p>", unsafe_allow_html=True)
 st.markdown("---")
@@ -202,46 +211,28 @@ with col_izq:
     else:
         st.dataframe(df_trades, use_container_width=True)
 
-# --- Columna Derecha: Consola Táctica de Parámetros ---
+# --- Columna Derecha: Consola Táctica ---
 with col_der:
     st.markdown("### ⚙️ Panel de Infraestructura Táctica")
     
-    # CORREGIDO: Removido el contenedor st.error que generaba el recuadro vacío si la red era exitosa.
     if not conexion_exitosa:
         st.error("⚠️ Alerta: Sin respuesta de sincronización de parámetros de control.")
         estado_bot = "INACTIVO"
         apalancamiento_actual = 1
         margen_maximo = 100.0
     else:
-        config_actual = df_control.iloc[0]
+        config_actual = df_control.iloc
         estado_bot = config_actual.get("estado_bot", "INACTIVO")
         apalancamiento_actual = int(config_actual.get("apalancamiento", 1))
         margen_maximo = float(config_actual.get("margen_maximo_usdt", 100.0))
 
-    st.markdown('<div class="card-indicador">', unsafe_allow_html=True)
-    st.markdown("#### Configuración Operativa Real")
-    
-    nuevo_estado = st.selectbox(
-        "Modificar Estado Operativo Watson:",
-        options=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"],
-        index=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"].index(estado_bot) if estado_bot in ["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"] else 2
-    )
-    
-    nuevo_apalancamiento = st.slider(
-        "Apalancamiento de Posiciones:", 
-        min_value=1, 
-        max_value=20, 
-        value=apalancamiento_actual
-    )
-    
-    nuevo_margen = st.number_input(
-        "Margen Límite de Exposición (USDT):", 
-        min_value=10.0, 
-        max_value=100000.0, 
-        value=margen_maximo,
-        step=50.0
-    )
-    
-    if st.button("🚀 Inyectar Parámetros de Control", use_container_width=True):
-        if not conexion_exitosa:
-            st.error("❌ Error de envío: No hay conexión fluida con Supabase.")
+    # CORREGIDO DE RAÍZ: Contenedor HTML limpio encapsulando los inputs nativos sin cuadros vacíos
+    with st.container():
+        st.markdown('#### Configuración Operativa Real')
+        
+        nuevo_estado = st.selectbox(
+            "Modificar Estado Operativo Watson:",
+            options=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"],
+            index=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"].index(estado_bot) if estado_bot in ["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"] else 2
+        )
+        
