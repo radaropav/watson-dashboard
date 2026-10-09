@@ -115,7 +115,7 @@ def obtener_headers_supabase():
         "Prefer": "return=representation"
     }
 
-def consultar_configuracion_instancia(instancia_id):
+def consulting_master_row(instancia_id):
     if not URL_BASE_SUPABASE or not KEY_MAESTRA_SUPABASE:
         return {"estado": "MODO_LOCAL", "apalancamiento": 10, "porcentaje_capital": 35}
     
@@ -139,7 +139,7 @@ def actualizar_parametro_supabase(instancia_id, payload):
     
     try:
         respuesta = requests.patch(endpoint, headers=headers, json=payload, timeout=6)
-        return respuesta.status_code in [200, 201, 24]
+        return respuesta.status_code in [200, 201, 204]
     except Exception:
         return False
 
@@ -183,7 +183,7 @@ str_dynamic.sidebar.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-config_remota = consultar_configuracion_instancia(id_instancia_actual)
+config_remota = consulting_master_row(id_instancia_actual)
 
 str_dynamic.markdown(f"<h1 style='margin-bottom:0;'>Mesa Algorítmica Watson Elite</h1>", unsafe_allow_html=True)
 str_dynamic.markdown(f"<p style='color:#94a3b8; font-size:14px; letter-spacing:1px;'>NÚCLEO MAESTRO ACTIVO: {instancia_seleccionada.upper()}</p>", unsafe_allow_html=True)
