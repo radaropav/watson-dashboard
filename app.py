@@ -68,16 +68,21 @@ st.markdown(estilo_css_premium, unsafe_allow_html=True)
 # ==========================================
 # 2. GESTIÓN DE CREDENCIALES
 # ==========================================
-SUPABASE_URL = st.secrets.get("URL_SUPABASE_TABLA", os.getenv("URL_SUPABASE_TABLA", ""))
+URL_RAW = st.secrets.get("URL_SUPABASE_TABLA", os.getenv("URL_SUPABASE_TABLA", ""))
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", ""))
 BINANCE_API_KEY = st.secrets.get("BINANCE_API_KEY", os.getenv("BINANCE_API_KEY", ""))
 BINANCE_SECRET_KEY = st.secrets.get("BINANCE_SECRET_KEY", os.getenv("BINANCE_SECRET_KEY", ""))
 
-if not SUPABASE_URL or not SUPABASE_KEY:
+if not URL_RAW or not SUPABASE_KEY:
     st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' en Secrets.")
     st.stop()
 
-SUPABASE_URL = str(SUPABASE_URL).strip().rstrip("/")
+# FORMATEO AUTOMÁTICO: Limpia la URL y asegura la estructura de la API REST de Supabase
+URL_LIMPIA = str(URL_RAW).strip().rstrip("/")
+if not URL_LIMPIA.endswith("/rest/v1"):
+    SUPABASE_REST_URL = f"{URL_LIMPIA}/rest/v1"
+else:
+    SUPABASE_REST_URL = URL_LIMPIA
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -88,9 +93,9 @@ HEADERS = {
 # ==========================================
 # 3. CONEXIÓN Y CONSULTAS A BASE DE DATOS
 # ==========================================
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=3)
 def consultar_tabla(tabla: str):
-    url = f"{SUPABASE_URL}/rest/v1/{tabla}"
+    url = f"{SUPABASE_REST_URL}/{tabla}"
     try:
         response = requests.get(url, headers=HEADERS)
         if response.status_code == 200:
@@ -100,11 +105,10 @@ def consultar_tabla(tabla: str):
         return pd.DataFrame()
 
 def enviar_actualizacion_tactica(payload: dict):
-    url = f"{SUPABASE_URL}/rest/v1/control_bot?id=eq.1"
+    url = f"{SUPABASE_REST_URL}/control_bot?id=eq.1"
     headers_patch = {**HEADERS, "Prefer": "return=minimal"}
     try:
         response = requests.patch(url, headers=headers_patch, json=payload)
-        # CORREGIDO: Comparación limpia sin el operador 'in' roto
         if response.status_code == 200 or response.status_code == 204:
             st.success("✅ Parámetros tácticos sincronizados.")
             return True
@@ -112,27 +116,26 @@ def enviar_actualizacion_tactica(payload: dict):
     except Exception:
         return False
 
-# Carga de datos
+# Carga de datos real
 df_control = consultar_tabla("control_bot")
 df_trades = consultar_tabla("historial_trades")
 df_mechazos = consultar_tabla("registro_mechazos")
+
+# Determinar dinámicamente el estado de la conexión de red
+conexion_exitosa = not df_control.empty
 
 # ==========================================
 # 4. DISEÑO DE INTERFAZ GENERAL (SIDEBAR + 2 COLUMNAS)
 # ==========================================
 
-# --- Barra Lateral: Telemetría de Cuenta ---
 with st.sidebar:
     st.markdown("<h2 style='color:#8b5cf6;'>WATSON QUANT</h2>", unsafe_allow_html=True)
     st.selectbox("Selección de Infraestructura", ["Bot Depredador Estándar (4H)", "Bot Watson Ultra Custom"])
-    
     st.markdown("---")
     st.markdown("### Telemetría de Cuenta")
-    
     st.markdown('<div class="card-indicador"><div class="metric-label">Balance Total USDT</div><div class="metric-val">$0.00</div></div>', unsafe_allow_html=True)
     st.markdown('<div class="card-indicador"><div class="metric-label">Disponible Margen</div><div class="metric-val">$0.00</div></div>', unsafe_allow_html=True)
 
-# --- Contenedor Principal de la App ---
 st.markdown("<h1 style='text-align: center; color: #ffffff;'>⚡ MESA ALGORÍTMICA WATSON ULTRA</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #94a3b8;'>Ecosistema de Monitoreo Táctico, Control de Riesgo y Bifurcación en Nube</p>", unsafe_allow_html=True)
 st.markdown("---")
@@ -145,9 +148,13 @@ with col_izq:
     
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown('<div class="card-indicador"><div class="metric-label">Estado en Nube</div><div class="metric-val" style="color:#ef4444;">FALLO_RE</div></div>', unsafe_allow_html=True)
+        # Dinámico: Muestra OK si conectó con la tabla o FALLO_RE si no
+        val_estado = "CONECTADO" if conexion_exitosa else "FALLO_RE"
+        color_estado = "#10b981" if conexion_exitosa else "#ef4444"
+        st.markdown(f'<div class="card-indicador"><div class="metric-label">Estado en Nube</div><div class="metric-val" style="color:{color_estado};">{val_estado}</div></div>', unsafe_allow_html=True)
     with c2:
-        st.markdown('<div class="card-indicador"><div class="metric-label">Falsas Rupturas</div><div class="metric-val">0 Mechazos</div></div>', unsafe_allow_html=True)
+        total_mechazos = len(df_mechazos) if not df_mechazos.empty else 0
+        st.markdown(f'<div class="card-indicador"><div class="metric-label">Falsas Rupturas</div><div class="metric-val">{total_mechazos} Mechazos</div></div>', unsafe_allow_html=True)
     with c3:
         total_ahorrado = 0.0
         if not df_mechazos.empty and 'perdida_estimada_ahorrada' in df_mechazos.columns:
@@ -164,9 +171,8 @@ with col_izq:
 with col_der:
     st.markdown("### ⚙️ Panel de Infraestructura Táctica")
     
-    if df_control.empty:
+    if not conexion_exitosa:
         st.error("⚠️ Error de Red / Credenciales: No se pudo extraer la fila de configuración de 'control_bot'.")
-        
         estado_bot = "INACTIVO"
         apalancamiento_actual = 1
         margen_maximo = 100.0
@@ -201,7 +207,7 @@ with col_der:
     )
     
     if st.button("🚀 Inyectar Parámetros de Control", use_container_width=True):
-        if df_control.empty:
+        if not conexion_exitosa:
             st.error("❌ No se pueden guardar los cambios porque no hay conexión establecida con la base de datos.")
         else:
             payload = {
@@ -216,4 +222,4 @@ with col_der:
 
 # Pie de página
 st.markdown("---")
-st.caption("Mesa Algorítmica Watson Ultra • DigitalOcean VPS • Conectores Supabase v1.0")
+st.caption("Mesa Algorítmica Watson Ultra • DigitalOcean VPS • Conectores Supabase v1.1")
