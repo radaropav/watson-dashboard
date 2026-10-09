@@ -115,10 +115,12 @@ def obtener_headers_supabase():
 
 def consulting_master_row(instancia_id):
     if not URL_BASE_SUPABASE or not KEY_MAESTRA_SUPABASE:
-        return {"estado": "MODO_LOCAL", "apalancamiento": 10, "porcentaje_capital": 35}
+        return {"estado": "FALLO_RED", "apalancamiento": 10, "porcentaje_capital": 35}
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE}?id=eq.{instancia_id}"
+    # Limpieza absoluta de parámetros para evitar errores de URL mal formada
+    url_limpia = URL_BASE_SUPABASE.split("?")[0] if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
+    endpoint = f"{url_limpia}?id=eq.{instancia_id}"
     
     try:
         respuesta = requests.get(endpoint, headers=headers, timeout=6)
@@ -133,7 +135,8 @@ def actualizar_parametro_supabase(instancia_id, payload):
         return False
     
     headers = obtener_headers_supabase()
-    endpoint = f"{URL_BASE_SUPABASE}?id=eq.{instancia_id}"
+    url_limpia = URL_BASE_SUPABASE.split("?")[0] if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
+    endpoint = f"{url_limpia}?id=eq.{instancia_id}"
     
     try:
         respuesta = requests.patch(endpoint, headers=headers, json=payload, timeout=6)
@@ -146,8 +149,10 @@ def consultar_metricas_tabla(nombre_tabla):
         return []
     
     headers = obtener_headers_supabase()
-    base_endpoint = URL_BASE_SUPABASE.split("?")[0] if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
-    endpoint = base_endpoint.replace("control_bot", nombre_tabla)
+    url_limpia = URL_BASE_SUPABASE.split("?")[0] if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
+    
+    # Reemplazo seguro basado en la tabla control_bot obligatoria
+    endpoint = url_limpia.replace("control_bot", nombre_tabla)
     
     try:
         respuesta = requests.get(endpoint, headers=headers, timeout=6)
@@ -222,7 +227,7 @@ with col_izq:
         )
         str_dynamic.plotly_chart(fig_equity, use_container_width=True)
 
-    str_dynamic.markdown("<br>### Monitoreo de Actividad y Mitigación", unsafe_allow_html=True)
+    str_dynamic.markdown("<br>### Monitoreo de Actividad u Mitigación", unsafe_allow_html=True)
     c1, c2, c3 = str_dynamic.columns(3)
     
     with c1:
@@ -249,10 +254,3 @@ with col_izq:
         str_dynamic.markdown(f"""
         <div class='card-indicador'>
             <p class='metric-label'>Capital Salvaguardado</p>
-            <p class='metric-val' style='color:#10b981;'>${suma_ahorrada:.2f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-with col_der:
-    str_dynamic.markdown("### Consola de Infraestructura Táctica")
-    str_dynamic.markdown("<p class='metric-label'>Canasta del Módulo</p>", unsafe_allow_html=True)
