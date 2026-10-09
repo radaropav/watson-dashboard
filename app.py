@@ -76,7 +76,7 @@ BINANCE_API_KEY = st.secrets.get("BINANCE_API_KEY", os.getenv("BINANCE_API_KEY",
 BINANCE_SECRET_KEY = st.secrets.get("BINANCE_SECRET_KEY", os.getenv("BINANCE_SECRET_KEY", ""))
 
 if not URL_RAW or not SUPABASE_KEY:
-    st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' in Secrets.")
+    st.error("🚨 Error Crítico: No se encontraron 'URL_SUPABASE_TABLA' o 'SUPABASE_KEY' en la configuración.")
     st.stop()
 
 URL_LIMPIA = str(URL_RAW).strip().rstrip("/")
@@ -214,7 +214,6 @@ with col_der:
     else:
         try:
             if len(df_control) > 0:
-                # CORREGIDO DE VERDAD: .iloc[0] cerrado correctamente con su corchete
                 fila_real = df_control.iloc[0]
                 config_actual["estado_bot"] = fila_real.get("estado_bot", "INACTIVO")
                 config_actual["apalancamiento"] = int(fila_real.get("apalancamiento", 1))
@@ -234,7 +233,7 @@ with col_der:
         index=["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"].index(estado_bot) if estado_bot in ["ACTIVO", "PAUSADO", "INACTIVO", "MANTENIMIENTO"] else 2
     )
     
-    # CORREGIDO DE VERDAD: st.slider cerrado de forma limpia en sus argumentos
+    # CORREGIDO Y VERIFICADO: Paréntesis de cierre restaurado perfectamente
     nuevo_apalancamiento = st.slider(
         "Apalancamiento de Posiciones:", 
         min_value=1, 
@@ -247,3 +246,6 @@ with col_der:
         min_value=10.0, 
         max_value=100000.0, 
         value=margen_maximo,
+        step=50.0
+    )
+    
