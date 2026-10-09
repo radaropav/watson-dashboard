@@ -146,7 +146,7 @@ def consultar_metricas_tabla(nombre_tabla):
         return []
     
     headers = obtener_headers_supabase()
-    base_endpoint = URL_BASE_SUPABASE.split("?") if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
+    base_endpoint = URL_BASE_SUPABASE.split("?")[0] if "?" in URL_BASE_SUPABASE else URL_BASE_SUPABASE
     endpoint = base_endpoint.replace("control_bot", nombre_tabla)
     
     try:
